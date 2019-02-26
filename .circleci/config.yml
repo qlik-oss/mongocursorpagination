@@ -1,0 +1,81 @@
+## This configuration file assumes the following circle environment variables are set:
+##  CODECLIMATE_REPO_TOKEN
+
+default-job-init: &default-job-init
+    docker:
+      - image: qlik/go-build
+    working_directory: /go/src/repo
+
+version: 2
+jobs:
+  lint:
+    <<: *default-job-init
+    steps:
+      - attach_workspace:
+          at: /workspace
+      - checkout
+      - run:
+          name: Lint
+          command: |
+            make lint
+  unit-test:
+    <<: *default-job-init
+    steps:
+      - attach_workspace:
+          at: /workspace
+      - checkout
+      - run:
+          name: Run Unit Tests
+          command: |
+            make test-unit-code-climate
+            cp ./unit.cover /workspace/.
+      - persist_to_workspace:
+          root: /workspace
+          paths:
+            - unit.cover
+  integration-test:
+    <<: *default-job-init
+    steps:
+      - attach_workspace:
+          at: /workspace
+      - checkout
+      - run:
+          name: Run Integration Tests
+          command: |
+            make test-integration-code-climate
+            cp ./integration.cover /workspace/.
+      - persist_to_workspace:
+          root: /workspace
+          paths:
+            - integration.cover
+  upload-coverage:
+    <<: *default-job-init
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /workspace
+      - run:
+          name: Upload
+          command: |
+            curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+            chmod +x ./cc-test-reporter
+            echo "mode: set" > cover.out
+            grep -h -v "^mode:" /workspace/unit.cover /workspace/integration.cover >> cover.out
+            sed -i "s/github.com\/qlik-oss\/mgo-cursor-pagination\///" cover.out
+            go get github.com/cbrand/gocov-merge
+            gocov-merge cover.out > c.out
+            cat c.out
+            ./cc-test-reporter before-build
+            ./cc-test-reporter after-build -r $CODECLIMATE_REPO_TOKEN
+
+workflows:
+  version: 2
+  build_test_and_push:
+    jobs:
+      - lint
+      - unit-test
+      - integration-test
+      - upload-coverage:
+          requires:
+              - unit-test
+              - integration-test
