@@ -46,6 +46,7 @@ jobs:
           name: Run Integration Tests
           command: |
             mkdir -p /workspace
+            go get github.com/qlik-oss/mgo-cursor-pagination/mgocursor
             make test-integration-code-climate
             cp ./integration.cover /workspace/.
       - persist_to_workspace:
