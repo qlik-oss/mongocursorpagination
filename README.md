@@ -1,5 +1,5 @@
-[![CircleCI](https://circleci.com/gh/qlik-oss/mgo-cursor-pagination/tree/master.svg?style=shield&circle-token=)](https://circleci.com/gh/qlik-oss/mgo-cursor-pagination/tree/master)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/TODO/test_coverage)](https://codeclimate.com/repos/TODO/test_coverage)
+[![CircleCI](https://circleci.com/gh/qlik-oss/mgo-cursor-pagination.svg?style=svg)](https://circleci.com/gh/qlik-oss/mgo-cursor-pagination/tree/master)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/4e4e0f41b11af79ca677/test_coverage)](https://codeclimate.com/github/qlik-oss/mgo-cursor-pagination/test_coverage)
 [![GoDoc](https://godoc.org/github.com/qlik-oss/mgo-cursor-pagination?status.svg)](https://godoc.org/github.com/qlik-oss/mgo-cursor-pagination)
 
 # mgo-cursor-pagination
