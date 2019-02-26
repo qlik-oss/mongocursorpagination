@@ -5,6 +5,8 @@ default-job-init: &default-job-init
     docker:
       - image: qlik/go-build
     working_directory: /go/src/repo
+    environment:
+      CGO_ENABLED: 0
 
 version: 2
 jobs:
@@ -27,6 +29,7 @@ jobs:
       - run:
           name: Run Unit Tests
           command: |
+            mkdir -p /workspace
             make test-unit-code-climate
             cp ./unit.cover /workspace/.
       - persist_to_workspace:
@@ -42,6 +45,7 @@ jobs:
       - run:
           name: Run Integration Tests
           command: |
+            mkdir -p /workspace
             make test-integration-code-climate
             cp ./integration.cover /workspace/.
       - persist_to_workspace:

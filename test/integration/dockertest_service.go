@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/pkg/errors"
-	dockertest "gopkg.in/ory-am/dockertest.v3"
 )
 
 var (

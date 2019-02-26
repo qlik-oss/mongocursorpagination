@@ -126,9 +126,10 @@
   version = "v1.0.0-rc6"
 
 [[projects]]
-  digest = "1:a671f3da2eedf2b8bab6339ba661f85d134cfc811f6097f5af55c9ec4aa43ea9"
+  digest = "1:7a6ab584104636b15f87c75bbfad3dfd0f60847b53af903159f354ef708bd632"
   name = "github.com/ory/dockertest"
   packages = [
+    ".",
     "docker",
     "docker/opts",
     "docker/pkg/archive",
@@ -220,14 +221,6 @@
   pruneopts = "UT"
   revision = "cc5685c2db1239775905f3911f0067c0fa74762f"
 
-[[projects]]
-  digest = "1:a86edb5d9a2675d566e0b7a133e69ec6f396f89cd3bdfc0715c3245092afb5e4"
-  name = "gopkg.in/ory-am/dockertest.v3"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "f76851ed013cf03f376b6580c834467187bb7148"
-  version = "v3.3.4"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -235,10 +228,10 @@
     "github.com/globalsign/mgo",
     "github.com/globalsign/mgo/bson",
     "github.com/icza/minquery",
+    "github.com/ory/dockertest",
     "github.com/ory/dockertest/docker",
     "github.com/pkg/errors",
     "github.com/stretchr/testify/require",
-    "gopkg.in/ory-am/dockertest.v3",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

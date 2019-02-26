@@ -6,10 +6,10 @@
 
 set -eu
 
-GO_PACKAGES=$(go list ./... | grep -v "test/" | grep -v "gen/" | grep -v "design" | grep -v "testing")
+GO_PACKAGES=$(go list ./... | grep -v "test/")
 
 for pkg in $GO_PACKAGES; do
-    go test -race -coverprofile=$(echo $pkg | tr / -).cover.tmp $pkg;
+    go test -coverprofile=$(echo $pkg | tr / -).cover.tmp $pkg;
 done
 
 echo "mode: set" > unit.cover
