@@ -4,7 +4,7 @@
 default-job-init: &default-job-init
     docker:
       - image: qlik/go-build
-    working_directory: /go/src/repo
+    working_directory: /go/src/github.com/qlik-oss/mgo-cursor-pagination
     environment:
       CGO_ENABLED: 0
 
@@ -46,7 +46,6 @@ jobs:
           name: Run Integration Tests
           command: |
             mkdir -p /workspace
-            go get github.com/qlik-oss/mgo-cursor-pagination/mgocursor
             make test-integration-code-climate
             cp ./integration.cover /workspace/.
       - persist_to_workspace:

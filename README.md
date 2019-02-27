@@ -42,7 +42,7 @@ mgo.Index{
 
 The [items store](./test/integration/items_store.go) offers a method to find items (e.g. by name) and paginate the results using the [find function](./find.go) exposed by `mgo-cursor-pagination`:
 ```go
-import mgocursor "github.com/qlik-oss/mgo-cursor-pagination"
+import "github.com/qlik-oss/mgo-cursor-pagination/mgocursor"
 ...
 
 // Find returns paginated items from the database matching the provided query
@@ -77,7 +77,7 @@ searchQuery := bson.M{"name": bson.RegEx{Pattern: "test item.*", Options: "i"}}
 englishCollation := mgo.Collation{Locale: "en", Strength: 3}
 
 // Arguments: query, next, previous, limit, sortAsc, paginatedField, collation
-foundItems, cursor, err := store.Find(searchQuery, "", "", 4, true, "name", englishCollation)
+foundItems, cursor, err := store.Find(searchQuery, "", "", 2, true, "name", englishCollation)
 ```
 
 To get the next page:
