@@ -7,6 +7,8 @@ default-job-init: &default-job-init
     working_directory: /go/src/github.com/qlik-oss/mgo-cursor-pagination
     environment:
       CGO_ENABLED: 0
+remote_docker_version: &remote_docker_version
+    version: 18.06.0-ce
 
 version: 2
 jobs:
@@ -42,6 +44,8 @@ jobs:
       - attach_workspace:
           at: /workspace
       - checkout
+      - setup_remote_docker:
+          <<: *remote_docker_version
       - run:
           name: Run Integration Tests
           command: |
