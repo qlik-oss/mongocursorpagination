@@ -24,12 +24,12 @@ type (
 	}
 
 	mongoStore struct {
-		col mgo.Collection
+		col *mgo.Collection
 	}
 )
 
 // NewMongoStore returns a new Store.
-func NewMongoStore(col mgo.Collection) Store {
+func NewMongoStore(col *mgo.Collection) Store {
 	return &mongoStore{
 		col: col,
 	}
@@ -45,8 +45,7 @@ func (m *mongoStore) Create(c Item) (Item, error) {
 // Find returns paginated items from the database matching the provided query
 func (m *mongoStore) Find(query bson.M, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]Item, mgocursor.Cursor, error) {
 	fp := mgocursor.FindParams{
-		DB:             m.col.Database,
-		CollectionName: m.col.Name,
+		Collection:     m.col,
 		Query:          query,
 		Limit:          limit,
 		SortAscending:  sortAscending,

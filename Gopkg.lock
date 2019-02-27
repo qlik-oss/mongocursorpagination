@@ -83,20 +83,12 @@
   revision = "eeefdecb41b842af6dc652aaea4026e8403e62df"
 
 [[projects]]
-  digest = "1:94f202ccdede10cf12382e60965a32c600d82498b6162c1098ab5764d2c160e8"
-  name = "github.com/icza/minquery"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "068600978efc1bbf209b29311813c29bca709e0b"
-  version = "v2.0.0"
-
-[[projects]]
-  digest = "1:0a69a1c0db3591fcefb47f115b224592c8dfa4368b7ba9fae509d5e16cdc95c8"
+  digest = "1:31e761d97c76151dde79e9d28964a812c46efc5baee4085b86f68f0c654450de"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
   pruneopts = "UT"
-  revision = "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242"
-  version = "v1.0.1"
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
 
 [[projects]]
   digest = "1:ee4d4af67d93cc7644157882329023ce9a7bcfce956a079069a9405521c7cc8d"
@@ -208,7 +200,7 @@
   name = "golang.org/x/net"
   packages = ["context"]
   pruneopts = "UT"
-  revision = "fe579d43d83210096a79b46dcca0e3721058393a"
+  revision = "c95aed5357e77a4bf7d3955c46740000a17adee1"
 
 [[projects]]
   branch = "master"
@@ -219,7 +211,7 @@
     "windows",
   ]
   pruneopts = "UT"
-  revision = "cc5685c2db1239775905f3911f0067c0fa74762f"
+  revision = "775f8194d0f9e65c46913c7be783d3d95a29333c"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -227,10 +219,8 @@
   input-imports = [
     "github.com/globalsign/mgo",
     "github.com/globalsign/mgo/bson",
-    "github.com/icza/minquery",
     "github.com/ory/dockertest",
     "github.com/ory/dockertest/docker",
-    "github.com/pkg/errors",
     "github.com/stretchr/testify/require",
   ]
   solver-name = "gps-cdcl"

@@ -17,7 +17,7 @@ func newStore(t *testing.T) Store {
 	session, err := mgo.Dial(mongoAddr)
 	require.NoError(t, err, "error connecting to mongo")
 	col := session.DB("test_db").C("items")
-	store := NewMongoStore(*col)
+	store := NewMongoStore(col)
 	err = store.EnsureIndices()
 	require.NoError(t, err)
 	return store

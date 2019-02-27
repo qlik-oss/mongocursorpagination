@@ -4,7 +4,7 @@
 
 # mgo-cursor-pagination
 
-A go package for the mgo mongo driver ([globalsign/mgo](https://github.com/globalsign/mgo)) which ports the find functionality offered by the node.js [mongo-cursor-pagination](https://github.com/mixmaxhq/mongo-cursor-pagination) module reusing some of [minquery](https://github.com/icza/minquery).
+A go package for the mgo mongo driver ([globalsign/mgo](https://github.com/globalsign/mgo)) which ports the find functionality offered by the node.js [mongo-cursor-pagination](https://github.com/mixmaxhq/mongo-cursor-pagination) module. Also inspired by [minquery](https://github.com/icza/minquery).
 
 `mgo-cursor-pagination` helps implementing cursor based pagination in your mongodb backed service:
 ```

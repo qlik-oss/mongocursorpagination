@@ -3,23 +3,21 @@
 package mgocursor
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/icza/minquery"
-	"github.com/pkg/errors"
 )
 
 // FindParams holds the parameters to be used in a paginated find mongo query that will return a
 // Cursor.
 type FindParams struct {
-	// The mongo database to use
-	DB *mgo.Database
-	// The name of the mongo collection to query
-	CollectionName string
-	// The mongo find query to augment with pagination
+	// The mongo collection to perform the find query on
+	Collection *mgo.Collection
+	// The find query to augment with pagination
 	Query bson.M
 	// The number of results to fetch, should be > 0
 	Limit int
@@ -49,7 +47,7 @@ type FindParams struct {
 	// The value to start querying previous page
 	Previous string
 	// Whether or not to include total count of documents matching filter in the cursor
-	// Specifying true makes an additionnal query.
+	// Specifying true makes an additionnal query
 	CountTotal bool
 }
 
@@ -79,8 +77,8 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	}
 	shouldSecondarySortOnID := p.PaginatedField != "_id"
 
-	if p.DB == nil {
-		return Cursor{}, errors.New("DB can't be nil")
+	if p.Collection == nil {
+		return Cursor{}, errors.New("Collection can't be nil")
 	}
 
 	if p.Limit <= 0 {
@@ -89,12 +87,12 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 
 	nextCursorValues, err := parseCursor(p.Next, shouldSecondarySortOnID)
 	if err != nil {
-		return Cursor{}, errors.Wrap(err, "next cursor parse failed")
+		return Cursor{}, fmt.Errorf(fmt.Sprintf("next cursor parse failed: %s", err))
 	}
 
 	previousCursorValues, err := parseCursor(p.Previous, shouldSecondarySortOnID)
 	if err != nil {
-		return Cursor{}, errors.Wrap(err, "previous cursor parse failed")
+		return Cursor{}, fmt.Errorf(fmt.Sprintf("previous cursor parse failed: %s", err))
 	}
 
 	// Figure out the sort direction and comparison operator that will be used in the augmented query
@@ -112,7 +110,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	// Compute total count of documents matching filter - only computed if CountTotal is True
 	var count int
 	if p.CountTotal {
-		count, err = p.DB.C(p.CollectionName).Find(bson.M{"$and": queries}).Count()
+		count, err = p.Collection.Find(bson.M{"$and": queries}).Count()
 		if err != nil {
 			return Cursor{}, err
 		}
@@ -138,9 +136,9 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 
 	// Execute the augmented query, get an additional element to see if there's another page
 	if p.Collation == nil {
-		err = p.DB.C(p.CollectionName).Find(bson.M{"$and": queries}).Sort(sort...).Limit(p.Limit + 1).All(results)
+		err = p.Collection.Find(bson.M{"$and": queries}).Sort(sort...).Limit(p.Limit + 1).All(results)
 	} else {
-		err = p.DB.C(p.CollectionName).Find(bson.M{"$and": queries}).Sort(sort...).Collation(p.Collation).Limit(p.Limit + 1).All(results)
+		err = p.Collection.Find(bson.M{"$and": queries}).Sort(sort...).Collation(p.Collation).Limit(p.Limit + 1).All(results)
 	}
 
 	if err != nil {
@@ -179,7 +177,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 			firstResult := resultsVal.Index(0).Interface()
 			previousCursor, err = generateCursor(firstResult, p.PaginatedField, shouldSecondarySortOnID)
 			if err != nil {
-				return Cursor{}, errors.Wrap(err, "could not create a previous cursor")
+				return Cursor{}, fmt.Errorf(fmt.Sprintf("could not create a previous cursor: %s", err))
 			}
 		}
 
@@ -188,7 +186,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 			lastResult := resultsVal.Index(resultsVal.Len() - 1).Interface()
 			nextCursor, err = generateCursor(lastResult, p.PaginatedField, shouldSecondarySortOnID)
 			if err != nil {
-				return Cursor{}, errors.Wrap(err, "could not create a next cursor")
+				return Cursor{}, fmt.Errorf(fmt.Sprintf("could not create a next cursor: %s", err))
 			}
 		}
 	}
@@ -208,10 +206,21 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	return cursor, nil
 }
 
+// decodeCursor decodes cursor data that was previously encoded with createCursor
+func decodeCursor(c string) (cursorData bson.D, err error) {
+	var data []byte
+	if data, err = base64.RawURLEncoding.DecodeString(c); err != nil {
+		return
+	}
+
+	err = bson.Unmarshal(data, &cursorData)
+	return
+}
+
 func parseCursor(cursor string, shouldSecondarySortOnID bool) ([]interface{}, error) {
 	cursorValues := make([]interface{}, 0, 2)
 	if cursor != "" {
-		parsedCursor, err := minquery.DefaultCursorCodec.ParseCursor(cursor)
+		parsedCursor, err := decodeCursor(cursor)
 		if err != nil {
 			return nil, err
 		}
@@ -250,6 +259,12 @@ func generateCursorQuery(shouldSecondarySortOnID bool, paginatedField string, co
 	return query
 }
 
+// encodeCursor encodes and returns cursor data that is url safe
+func encodeCursor(cursorData bson.D) (string, error) {
+	data, err := bson.Marshal(cursorData)
+	return base64.RawURLEncoding.EncodeToString(data), err
+}
+
 func generateCursor(result interface{}, paginatedField string, shouldSecondarySortOnID bool) (string, error) {
 	// Find the result struct field name that has a tag matching the paginated filed name
 	resultStructFieldName := findStructFieldNameByBsonTag(reflect.TypeOf(result), paginatedField)
@@ -266,9 +281,9 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 		cursorData = append(cursorData, bson.DocElem{Name: "_id", Value: id})
 	}
 	// Encode the cursor data into a string
-	cursor, err := minquery.DefaultCursorCodec.CreateCursor(cursorData)
+	cursor, err := encodeCursor(cursorData)
 	if err != nil {
-		return "", errors.Wrap(err, fmt.Sprintf("failed to encode cursor using %v", cursorData))
+		return "", fmt.Errorf(fmt.Sprintf("failed to encode cursor using %v: %s", cursorData, err))
 	}
 	return cursor, nil
 }

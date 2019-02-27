@@ -9,7 +9,6 @@ import (
 
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -145,7 +144,7 @@ func (svc *DockerService) Start() (*DockerServiceInstance, error) {
 	// Pull the image, create a container based on the image, and run the container.
 	resource, err := pool.RunWithOptions(runOptions)
 	if err != nil {
-		return nil, errors.Errorf("error running collections container, %v", err)
+		return nil, fmt.Errorf("error running collections container, %v", err)
 	}
 
 	hostname := resource.Container.NetworkSettings.IPAddress
@@ -163,7 +162,7 @@ func (svc *DockerService) Start() (*DockerServiceInstance, error) {
 		return svc.HealthCheck(svc.Instance)
 	})
 	if err != nil {
-		return nil, errors.Errorf("healthcheck failed for %s. %v", svc.Image, err)
+		return nil, fmt.Errorf("healthcheck failed for %s. %v", svc.Image, err)
 	}
 
 	return svc.Instance, nil
