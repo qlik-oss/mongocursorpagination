@@ -4,7 +4,7 @@
 
 # mgo-cursor-pagination
 
-A go package for the mgo mongo driver ([globalsign/mgo](https://github.com/globalsign/mgo)) which ports the find functionality offered by the node.js [mongo-cursor-pagination](https://github.com/mixmaxhq/mongo-cursor-pagination) module. Also inspired by [minquery](https://github.com/icza/minquery).
+A go package for the mgo mongo driver ([globalsign/mgo](https://github.com/globalsign/mgo)) which ports the find functionality offered by the node.js [mongo-cursor-pagination](https://github.com/mixmaxhq/mongo-cursor-pagination) module. Also inspired by [icza/minquery](https://github.com/icza/minquery).
 
 `mgo-cursor-pagination` helps implementing cursor based pagination in your mongodb backed service:
 ```
@@ -48,8 +48,7 @@ import "github.com/qlik-oss/mgo-cursor-pagination/mgocursor"
 // Find returns paginated items from the database matching the provided query
 func (m *mongoStore) Find(query bson.M, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]Item, mgocursor.Cursor, error) {
 	fp := mgocursor.FindParams{
-		DB:             m.col.Database,
-		CollectionName: m.col.Name,
+        Collection:     m.col,
 		Query:          query,
 		Limit:          limit,
 		SortAscending:  sortAscending,
