@@ -1,8 +1,14 @@
+DOCKER_TEST_IMAGE := mgo-cursor-pagination-test
+VERSION ?= latest
 ARGS ?= ""
 
 # Lint the code
 lint:
 	./scripts/lint.sh
+
+# Build the Docker test image
+build-test-docker:
+	./scripts/build-docker.sh $(DOCKER_TEST_IMAGE) $(VERSION) Dockerfile.test
 
 # Run unit tests
 test-unit:
@@ -21,5 +27,6 @@ test-integration-code-climate:
 	./scripts/test-integration-code-climate.sh $(ARGS)
 
 .PHONY: lint
+.PHONY: build-test-docker
 .PHONY: test-unit test-integration-code-climate
 .PHONY: test-integration test-unit-code-climate

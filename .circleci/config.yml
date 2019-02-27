@@ -4,36 +4,66 @@
 default-job-init: &default-job-init
     docker:
       - image: qlik/go-build
-    working_directory: /go/src/github.com/qlik-oss/mgo-cursor-pagination
+    working_directory: /go/src/github.com/qlik-oss/${CIRCLE_PROJECT_REPONAME}
     environment:
       CGO_ENABLED: 0
 remote_docker_version: &remote_docker_version
     version: 18.06.0-ce
+load-test-docker-image: &load-test-docker-image
+    name: Load test docker image
+    command: |
+      docker image load -i /workspace/docker-test.tar
 
 version: 2
 jobs:
+  build-test-image:
+    <<: *default-job-init
+    steps:
+      - checkout
+      - setup_remote_docker:
+          <<: *remote_docker_version
+      -  run:
+          name: Set up server
+          command: |
+              mkdir -p /workspace
+      - run:
+          name: Build a test image
+          command: |
+            make build-test-docker
+            docker save -o /workspace/docker-test.tar ${CIRCLE_PROJECT_REPONAME}-test:latest
+      - persist_to_workspace:
+          root: /workspace
+          paths:
+            - docker-test.tar
   lint:
     <<: *default-job-init
     steps:
       - attach_workspace:
           at: /workspace
+      - setup_remote_docker:
+          <<: *remote_docker_version
+      - run:
+          <<: *load-test-docker-image
       - checkout
       - run:
           name: Lint
           command: |
-            make lint
+            docker run --rm ${CIRCLE_PROJECT_REPONAME}-test make lint
   unit-test:
     <<: *default-job-init
     steps:
       - attach_workspace:
           at: /workspace
+      - setup_remote_docker:
+          <<: *remote_docker_version
+      - run:
+          <<: *load-test-docker-image
       - checkout
       - run:
-          name: Run Unit Tests
+          name: Test
           command: |
-            mkdir -p /workspace
-            make test-unit-code-climate
-            cp ./unit.cover /workspace/.
+            docker run --name unit-test ${CIRCLE_PROJECT_REPONAME}-test make test-unit-code-climate
+            docker cp unit-test:/go/src/github.com/qlik-oss/${CIRCLE_PROJECT_REPONAME}/unit.cover /workspace/.
       - persist_to_workspace:
           root: /workspace
           paths:
@@ -43,15 +73,16 @@ jobs:
     steps:
       - attach_workspace:
           at: /workspace
-      - checkout
       - setup_remote_docker:
           <<: *remote_docker_version
       - run:
-          name: Run Integration Tests
+          <<: *load-test-docker-image
+      - checkout
+      - run:
+          name: Test
           command: |
-            mkdir -p /workspace
-            make test-integration-code-climate
-            cp ./integration.cover /workspace/.
+            docker run --name integration-test -v /var/run/docker.sock:/var/run/docker.sock ${CIRCLE_PROJECT_REPONAME}-test make test-integration-code-climate ARGS="-docker=true"
+            docker cp integration-test:/go/src/github.com/qlik-oss/${CIRCLE_PROJECT_REPONAME}/integration.cover /workspace/.
       - persist_to_workspace:
           root: /workspace
           paths:
@@ -80,10 +111,17 @@ workflows:
   version: 2
   build_test_and_push:
     jobs:
-      - lint
-      - unit-test
-      - integration-test
+      - build-test-image
+      - lint:
+          requires:
+            - build-test-image
+      - unit-test:
+          requires:
+            - build-test-image
+      - integration-test:
+          requires:
+            - build-test-image
       - upload-coverage:
           requires:
-              - unit-test
-              - integration-test
+            - unit-test
+            - integration-test

@@ -1,0 +1,3 @@
+FROM golang:1.11-stretch
+WORKDIR /go/src/github.com/qlik-trial/collections/
+COPY . /go/src/github.com/qlik-trial/collections/
