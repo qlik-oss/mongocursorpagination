@@ -4,9 +4,7 @@
 default-job-init: &default-job-init
     docker:
       - image: qlik/go-build
-    working_directory: /go/src/github.com/qlik-oss/${CIRCLE_PROJECT_REPONAME}
-    environment:
-      CGO_ENABLED: 0
+    working_directory: /go/src/github.com/qlik-oss/mgo-cursor-pagination
 remote_docker_version: &remote_docker_version
     version: 18.06.0-ce
 load-test-docker-image: &load-test-docker-image
@@ -19,18 +17,18 @@ jobs:
   build-test-image:
     <<: *default-job-init
     steps:
-      - checkout
       - setup_remote_docker:
           <<: *remote_docker_version
+      - checkout
       -  run:
-          name: Set up server
+          name: Set up workspace
           command: |
               mkdir -p /workspace
       - run:
           name: Build a test image
           command: |
             make build-test-docker
-            docker save -o /workspace/docker-test.tar ${CIRCLE_PROJECT_REPONAME}-test:latest
+            docker save -o /workspace/docker-test.tar mgo-cursor-pagination-test:latest
       - persist_to_workspace:
           root: /workspace
           paths:
@@ -48,7 +46,7 @@ jobs:
       - run:
           name: Lint
           command: |
-            docker run --rm ${CIRCLE_PROJECT_REPONAME}-test make lint
+            docker run --rm mgo-cursor-pagination-test make lint
   unit-test:
     <<: *default-job-init
     steps:
@@ -62,8 +60,8 @@ jobs:
       - run:
           name: Test
           command: |
-            docker run --name unit-test ${CIRCLE_PROJECT_REPONAME}-test make test-unit-code-climate
-            docker cp unit-test:/go/src/github.com/qlik-oss/${CIRCLE_PROJECT_REPONAME}/unit.cover /workspace/.
+            docker run --name unit-test mgo-cursor-pagination-test make test-unit-code-climate
+            docker cp unit-test:/go/src/github.com/qlik-oss/mgo-cursor-pagination/unit.cover /workspace/.
       - persist_to_workspace:
           root: /workspace
           paths:
@@ -81,8 +79,8 @@ jobs:
       - run:
           name: Test
           command: |
-            docker run --name integration-test -v /var/run/docker.sock:/var/run/docker.sock ${CIRCLE_PROJECT_REPONAME}-test make test-integration-code-climate ARGS="-docker=true"
-            docker cp integration-test:/go/src/github.com/qlik-oss/${CIRCLE_PROJECT_REPONAME}/integration.cover /workspace/.
+            docker run --name integration-test -v /var/run/docker.sock:/var/run/docker.sock mgo-cursor-pagination-test make test-integration-code-climate ARGS="-docker=true"
+            docker cp integration-test:/go/src/github.com/qlik-oss/mgo-cursor-pagination/integration.cover /workspace/.
       - persist_to_workspace:
           root: /workspace
           paths:
