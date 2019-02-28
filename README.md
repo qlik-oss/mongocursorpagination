@@ -40,7 +40,7 @@ mgo.Index{
 }
 ```
 
-The [items store](./test/integration/items_store.go) offers a method to find items (e.g. by name) and paginate the results using the [find function](./find.go) exposed by `mgo-cursor-pagination`:
+The [items store](./test/integration/items_store.go) offers a method to find items (e.g. by name) and paginate the results using the [find function](./mgocursor/find.go) exposed by `mgo-cursor-pagination`:
 ```go
 import "github.com/qlik-oss/mgo-cursor-pagination/mgocursor"
 ...
@@ -91,4 +91,4 @@ from the second page, we can get to first page:
 foundItems, cursor, err = store.Find(searchQuery, "", cursor.Previous, 2, true, "name", englishCollation)
 ```
 
-See [find_test.go](./test/integration/find_test.go) for the integration test that uses the [items store](./test/integration/items_store.go)'s find method.
+See [items_store_test.go](./test/integration/items_store_test.go) for the integration test that uses the [items store](./test/integration/items_store.go)'s find method.
