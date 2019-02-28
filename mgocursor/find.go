@@ -128,7 +128,8 @@ var Find = func(p FindParams, results interface{}) (Cursor, error) {
 		} else if p.Previous != "" {
 			cursorValues = previousCursorValues
 		}
-		cursorQuery, err := generateCursorQuery(shouldSecondarySortOnID, p.PaginatedField, comparisonOp, cursorValues)
+		var cursorQuery bson.M
+		cursorQuery, err = generateCursorQuery(shouldSecondarySortOnID, p.PaginatedField, comparisonOp, cursorValues)
 		if err != nil {
 			return Cursor{}, err
 		}
