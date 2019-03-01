@@ -45,7 +45,8 @@ func (m *mongoStore) Create(c Item) (Item, error) {
 // Find returns paginated items from the database matching the provided query
 func (m *mongoStore) Find(query bson.M, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]Item, mgocursorpagination.Cursor, error) {
 	fp := mgocursorpagination.FindParams{
-		Collection:     m.col,
+		DB:             m.col.Database,
+		CollectionName: m.col.Name,
 		Query:          query,
 		Limit:          limit,
 		SortAscending:  sortAscending,

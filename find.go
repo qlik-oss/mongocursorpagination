@@ -16,8 +16,10 @@ type (
 	// FindParams holds the parameters to be used in a paginated find mongo query that will return a
 	// Cursor.
 	FindParams struct {
-		// The mongo collection to perform the find query on
-		Collection *mgo.Collection
+		// The mongo database to use
+		DB *mgo.Database
+		// The name of the mongo collection to query
+		CollectionName string
 		// The find query to augment with pagination
 		Query bson.M
 		// The number of results to fetch, should be > 0
@@ -83,8 +85,8 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	}
 	shouldSecondarySortOnID := p.PaginatedField != "_id"
 
-	if p.Collection == nil {
-		return Cursor{}, errors.New("Collection can't be nil")
+	if p.DB == nil {
+		return Cursor{}, errors.New("DB can't be nil")
 	}
 
 	if p.Limit <= 0 {
@@ -116,7 +118,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	// Compute total count of documents matching filter - only computed if CountTotal is True
 	var count int
 	if p.CountTotal {
-		count, err = executeCountQuery(p.Collection, queries)
+		count, err = executeCountQuery(p.DB, p.CollectionName, queries)
 		if err != nil {
 			return Cursor{}, err
 		}
@@ -150,7 +152,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	}
 
 	// Execute the augmented query, get an additional element to see if there's another page
-	err = executeCursorQuery(p.Collection, queries, sort, p.Limit, p.Collation, results)
+	err = executeCursorQuery(p.DB, p.CollectionName, queries, sort, p.Limit, p.Collation, results)
 	if err != nil {
 		return Cursor{}, err
 	}
@@ -254,8 +256,8 @@ func decodeCursor(cursor string) (bson.D, error) {
 	return cursorData, err
 }
 
-var executeCountQuery = func(collection *mgo.Collection, queries []bson.M) (int, error) {
-	return collection.Find(bson.M{"$and": queries}).Count()
+var executeCountQuery = func(db *mgo.Database, collectionName string, queries []bson.M) (int, error) {
+	return db.C(collectionName).Find(bson.M{"$and": queries}).Count()
 }
 
 func generateCursorQuery(shouldSecondarySortOnID bool, paginatedField string, comparisonOp string, cursorFieldValues []interface{}) (bson.M, error) {
@@ -278,11 +280,11 @@ func generateCursorQuery(shouldSecondarySortOnID bool, paginatedField string, co
 	return query, nil
 }
 
-var executeCursorQuery = func(collection *mgo.Collection, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
+var executeCursorQuery = func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 	if collation == nil {
-		return collection.Find(bson.M{"$and": query}).Sort(sort...).Limit(limit + 1).All(results)
+		return db.C(collectionName).Find(bson.M{"$and": query}).Sort(sort...).Limit(limit + 1).All(results)
 	}
-	return collection.Find(bson.M{"$and": query}).Sort(sort...).Collation(collation).Limit(limit + 1).All(results)
+	return db.C(collectionName).Find(bson.M{"$and": query}).Sort(sort...).Collation(collation).Limit(limit + 1).All(results)
 }
 
 func generateCursor(result interface{}, paginatedField string, shouldSecondarySortOnID bool) (string, error) {

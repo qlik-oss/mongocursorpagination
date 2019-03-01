@@ -23,8 +23,8 @@ func TestFind(t *testing.T) {
 		name               string
 		findParams         FindParams
 		results            interface{}
-		executeCountQuery  func(collection *mgo.Collection, queries []bson.M) (int, error)
-		executeCursorQuery func(collection *mgo.Collection, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error
+		executeCountQuery  func(db *mgo.Database, collectionName string, queries []bson.M) (int, error)
+		executeCursorQuery func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error
 		expectedCursor     Cursor
 		expectedErr        error
 	}{
@@ -38,19 +38,20 @@ func TestFind(t *testing.T) {
 			expectedErr:        errors.New("results can't be nil"),
 		},
 		{
-			name:               "errors when Collection is nil",
+			name:               "errors when DB is nil",
 			findParams:         FindParams{},
 			results:            &[]item{},
 			executeCountQuery:  nil,
 			executeCursorQuery: nil,
 			expectedCursor:     Cursor{},
-			expectedErr:        errors.New("Collection can't be nil"),
+			expectedErr:        errors.New("DB can't be nil"),
 		},
 		{
 			name: "errors when limit is less than 1",
 			findParams: FindParams{
-				Collection: &mgo.Collection{},
-				Limit:      0,
+				DB:             &mgo.Database{},
+				CollectionName: "items",
+				Limit:          0,
 			},
 			results:            &[]item{},
 			executeCountQuery:  nil,
@@ -61,9 +62,10 @@ func TestFind(t *testing.T) {
 		{
 			name: "errors when next cursor is bad",
 			findParams: FindParams{
-				Collection: &mgo.Collection{},
-				Limit:      2,
-				Next:       "XXXXXaGVsbG8=",
+				DB:             &mgo.Database{},
+				CollectionName: "items",
+				Limit:          2,
+				Next:           "XXXXXaGVsbG8=",
 			},
 			results:            &[]item{},
 			executeCountQuery:  nil,
@@ -74,9 +76,10 @@ func TestFind(t *testing.T) {
 		{
 			name: "errors when previous cursor is bad",
 			findParams: FindParams{
-				Collection: &mgo.Collection{},
-				Limit:      2,
-				Previous:   "XXXXXaGVsbG8=",
+				DB:             &mgo.Database{},
+				CollectionName: "items",
+				Limit:          2,
+				Previous:       "XXXXXaGVsbG8=",
 			},
 			results:            &[]item{},
 			executeCountQuery:  nil,
@@ -87,7 +90,8 @@ func TestFind(t *testing.T) {
 		{
 			name: "errors when executeCountQuery errors",
 			findParams: FindParams{
-				Collection:     &mgo.Collection{},
+				DB:             &mgo.Database{},
+				CollectionName: "items",
 				Query:          bson.M{"name": bson.RegEx{Pattern: "test item.*", Options: "i"}},
 				SortAscending:  false,
 				PaginatedField: "name",
@@ -95,7 +99,7 @@ func TestFind(t *testing.T) {
 				CountTotal:     true,
 			},
 			results: &[]item{},
-			executeCountQuery: func(collection *mgo.Collection, queries []bson.M) (int, error) {
+			executeCountQuery: func(db *mgo.Database, collectionName string, queries []bson.M) (int, error) {
 				return 0, errors.New("error")
 			},
 			executeCursorQuery: nil,
@@ -105,7 +109,8 @@ func TestFind(t *testing.T) {
 		{
 			name: "errors when executeCursorQuery errors",
 			findParams: FindParams{
-				Collection:     &mgo.Collection{},
+				DB:             &mgo.Database{},
+				CollectionName: "items",
 				Query:          bson.M{"name": bson.RegEx{Pattern: "test item.*", Options: "i"}},
 				SortAscending:  false,
 				PaginatedField: "name",
@@ -113,10 +118,10 @@ func TestFind(t *testing.T) {
 				CountTotal:     true,
 			},
 			results: &[]item{},
-			executeCountQuery: func(collection *mgo.Collection, queries []bson.M) (int, error) {
+			executeCountQuery: func(db *mgo.Database, collectionName string, queries []bson.M) (int, error) {
 				return 2, nil
 			},
-			executeCursorQuery: func(collection *mgo.Collection, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
+			executeCursorQuery: func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 				return errors.New("error")
 			},
 			expectedCursor: Cursor{},
@@ -125,7 +130,8 @@ func TestFind(t *testing.T) {
 		{
 			name: "return cursor with next and count also populates results when next and prev not specified",
 			findParams: FindParams{
-				Collection:     &mgo.Collection{},
+				DB:             &mgo.Database{},
+				CollectionName: "items",
 				Query:          bson.M{"name": bson.RegEx{Pattern: "test item.*", Options: "i"}},
 				SortAscending:  false,
 				PaginatedField: "name",
@@ -133,10 +139,10 @@ func TestFind(t *testing.T) {
 				CountTotal:     true,
 			},
 			results: &[]item{},
-			executeCountQuery: func(collection *mgo.Collection, queries []bson.M) (int, error) {
+			executeCountQuery: func(db *mgo.Database, collectionName string, queries []bson.M) (int, error) {
 				return 2, nil
 			},
-			executeCursorQuery: func(collection *mgo.Collection, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
+			executeCursorQuery: func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 				resultv := reflect.ValueOf(results)
 				resultv.Elem().Set(reflect.ValueOf([]item{
 					{ID: "111", Name: "test item 1", CreatedAt: time.Now()},
@@ -157,7 +163,8 @@ func TestFind(t *testing.T) {
 		{
 			name: "return cursor with previous and count also populates results when next is specified",
 			findParams: FindParams{
-				Collection:     &mgo.Collection{},
+				DB:             &mgo.Database{},
+				CollectionName: "items",
 				Query:          bson.M{"name": bson.RegEx{Pattern: "test item.*", Options: "i"}},
 				SortAscending:  true,
 				PaginatedField: "name",
@@ -166,10 +173,10 @@ func TestFind(t *testing.T) {
 				CountTotal:     true,
 			},
 			results: &[]item{},
-			executeCountQuery: func(collection *mgo.Collection, queries []bson.M) (int, error) {
+			executeCountQuery: func(db *mgo.Database, collectionName string, queries []bson.M) (int, error) {
 				return 2, nil
 			},
-			executeCursorQuery: func(collection *mgo.Collection, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
+			executeCursorQuery: func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 				resultv := reflect.ValueOf(results)
 				resultv.Elem().Set(reflect.ValueOf([]item{
 					{ID: "111", Name: "test item 1", CreatedAt: time.Now()},
@@ -189,7 +196,8 @@ func TestFind(t *testing.T) {
 		{
 			name: "return cursor with next and count also populates results when previous is specified",
 			findParams: FindParams{
-				Collection:     &mgo.Collection{},
+				DB:             &mgo.Database{},
+				CollectionName: "items",
 				Query:          bson.M{"name": bson.RegEx{Pattern: "test item.*", Options: "i"}},
 				SortAscending:  true,
 				PaginatedField: "name",
@@ -198,10 +206,10 @@ func TestFind(t *testing.T) {
 				CountTotal:     true,
 			},
 			results: &[]item{},
-			executeCountQuery: func(collection *mgo.Collection, queries []bson.M) (int, error) {
+			executeCountQuery: func(db *mgo.Database, collectionName string, queries []bson.M) (int, error) {
 				return 2, nil
 			},
-			executeCursorQuery: func(collection *mgo.Collection, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
+			executeCursorQuery: func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 				resultv := reflect.ValueOf(results)
 				resultv.Elem().Set(reflect.ValueOf([]item{
 					{ID: "111", Name: "test item 1", CreatedAt: time.Now()},
@@ -221,15 +229,16 @@ func TestFind(t *testing.T) {
 		{
 			name: "return cursor with next also populates results when no pagination field specified",
 			findParams: FindParams{
-				Collection:    &mgo.Collection{},
-				Query:         bson.M{},
-				SortAscending: true,
-				Limit:         2,
-				CountTotal:    false,
+				DB:             &mgo.Database{},
+				CollectionName: "items",
+				Query:          bson.M{},
+				SortAscending:  true,
+				Limit:          2,
+				CountTotal:     false,
 			},
 			results:           &[]item{},
 			executeCountQuery: nil,
-			executeCursorQuery: func(collection *mgo.Collection, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
+			executeCursorQuery: func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 				resultv := reflect.ValueOf(results)
 				resultv.Elem().Set(reflect.ValueOf([]item{
 					{ID: bson.ObjectIdHex("1addf533e81549de7696cb04"), Name: "test item 1", CreatedAt: time.Now()},
