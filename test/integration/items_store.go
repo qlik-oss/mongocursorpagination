@@ -5,7 +5,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/qlik-oss/mgo-cursor-pagination/mgocursor"
+	"github.com/qlik-oss/mgocursorpagination"
 )
 
 type (
@@ -43,8 +43,8 @@ func (m *mongoStore) Create(c Item) (Item, error) {
 }
 
 // Find returns paginated items from the database matching the provided query
-func (m *mongoStore) Find(query bson.M, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]Item, mgocursor.Cursor, error) {
-	fp := mgocursor.FindParams{
+func (m *mongoStore) Find(query bson.M, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]Item, mgocursorpagination.Cursor, error) {
+	fp := mgocursorpagination.FindParams{
 		Collection:     m.col,
 		Query:          query,
 		Limit:          limit,

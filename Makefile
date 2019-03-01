@@ -1,4 +1,4 @@
-REPO_NAME := mgo-cursor-pagination
+REPO_NAME := mgocursorpagination
 DOCKER_TEST_IMAGE := $(REPO_NAME)-test
 VERSION ?= latest
 ARGS ?= ""
