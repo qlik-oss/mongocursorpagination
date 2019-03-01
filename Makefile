@@ -3,30 +3,35 @@ DOCKER_TEST_IMAGE := $(REPO_NAME)-test
 VERSION ?= latest
 ARGS ?= ""
 
+# Install dependencies using go get
+dep:
+	go get -v -t -d ./...
+
 # Lint the code
-lint:
+lint: dep
 	./scripts/lint.sh
 
 # Build the Docker test image
-build-test-docker:
+build-test-docker: dep
 	./scripts/build-docker.sh $(DOCKER_TEST_IMAGE) $(VERSION) Dockerfile.test
 
 # Run unit tests
-test-unit:
+test-unit: dep
 	./scripts/test-unit.sh
 
 # Run unit tests with Code Climate coverage
-test-unit-code-climate:
+test-unit-code-climate: dep
 	./scripts/test-unit-code-climate.sh
 
 # Run integration tests
-test-integration:
+test-integration: dep
 	./scripts/test-integration.sh $(ARGS)
 
 # Run integration tests
-test-integration-code-climate:
+test-integration-code-climate: dep
 	./scripts/test-integration-code-climate.sh $(ARGS)
 
+.PHONY: dep
 .PHONY: lint
 .PHONY: build-test-docker
 .PHONY: test-unit test-integration-code-climate

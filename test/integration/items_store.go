@@ -19,7 +19,7 @@ type (
 	// Store allows operations on items.
 	Store interface {
 		Create(i Item) (Item, error)
-		Find(query bson.M, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]Item, mgocursor.Cursor, error)
+		Find(query bson.M, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]Item, mgocursorpagination.Cursor, error)
 		EnsureIndices() error
 	}
 
@@ -56,8 +56,8 @@ func (m *mongoStore) Find(query bson.M, next string, previous string, limit int,
 		CountTotal:     true,
 	}
 	var items []Item
-	c, err := mgocursor.Find(fp, &items)
-	cursor := mgocursor.Cursor{
+	c, err := mgocursorpagination.Find(fp, &items)
+	cursor := mgocursorpagination.Cursor{
 		Previous:    c.Previous,
 		Next:        c.Next,
 		HasPrevious: c.HasPrevious,
