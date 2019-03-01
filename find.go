@@ -12,64 +12,66 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
-// FindParams holds the parameters to be used in a paginated find mongo query that will return a
-// Cursor.
-type FindParams struct {
-	// The mongo collection to perform the find query on
-	Collection *mgo.Collection
-	// The find query to augment with pagination
-	Query bson.M
-	// The number of results to fetch, should be > 0
-	Limit int
-	// true, if the results should be sort ascending, false otherwise
-	SortAscending bool
-	// The name of the mongo collection field being paginated and sorted on. This field must:
-	// 1. Be orderable. We must sort by this value. If duplicate values for paginatedField field
-	//    exist, the results will be secondarily ordered by the _id
-	// 2. Be indexed. For large collections, this should be indexed for query performance
-	// 3. Be immutable. If the value changes between paged queries, it could appear twice
-	// 4. Match the bson field name the result struct. e.g.:
-	//
-	//    PaginatedField would be "name" when paginating employees by name
-	//
-	//    type Employee struct {
-	//        ID          bson.ObjectId `bson:"_id"`
-	//        Name        string        `bson:"name"`
-	//    }
-	//
-	PaginatedField string
-	// The collation to use for the sort ordering.
-	// See https://docs.mongodb.com/manual/reference/collation-locales-defaults/#supported-languages-and-locales
-	// This is ignored if PaginatedField is empty
-	Collation *mgo.Collation
-	// The value to start querying the page
-	Next string
-	// The value to start querying previous page
-	Previous string
-	// Whether or not to include total count of documents matching filter in the cursor
-	// Specifying true makes an additionnal query
-	CountTotal bool
-}
+type (
+	// FindParams holds the parameters to be used in a paginated find mongo query that will return a
+	// Cursor.
+	FindParams struct {
+		// The mongo collection to perform the find query on
+		Collection *mgo.Collection
+		// The find query to augment with pagination
+		Query bson.M
+		// The number of results to fetch, should be > 0
+		Limit int
+		// true, if the results should be sort ascending, false otherwise
+		SortAscending bool
+		// The name of the mongo collection field being paginated and sorted on. This field must:
+		// 1. Be orderable. We must sort by this value. If duplicate values for paginatedField field
+		//    exist, the results will be secondarily ordered by the _id
+		// 2. Be indexed. For large collections, this should be indexed for query performance
+		// 3. Be immutable. If the value changes between paged queries, it could appear twice
+		// 4. Match the bson field name the result struct. e.g.:
+		//
+		//    PaginatedField would be "name" when paginating employees by name
+		//
+		//    type Employee struct {
+		//        ID          bson.ObjectId `bson:"_id"`
+		//        Name        string        `bson:"name"`
+		//    }
+		//
+		PaginatedField string
+		// The collation to use for the sort ordering.
+		// See https://docs.mongodb.com/manual/reference/collation-locales-defaults/#supported-languages-and-locales
+		// This is ignored if PaginatedField is empty
+		Collation *mgo.Collation
+		// The value to start querying the page
+		Next string
+		// The value to start querying previous page
+		Previous string
+		// Whether or not to include total count of documents matching filter in the cursor
+		// Specifying true makes an additionnal query
+		CountTotal bool
+	}
 
-// Cursor holds the pagination data about the find mongo query that was performed.
-type Cursor struct {
-	// The URL safe previous page cursor to pass in a Find call to get the previous page.
-	// This is set to the empty string if there is no previous page.
-	Previous string
-	// The URL safe next page cursor to pass in a Find call to get the next page.
-	// This is set to the empty string if there is no next page.
-	Next string
-	// true if there is a previous page, false otherwise
-	HasPrevious bool
-	// true if there is a next page, false otherwise
-	HasNext bool
-	// Total count of documents matching filter - only computed if CountTotal is True
-	Count int
-}
+	// Cursor holds the pagination data about the find mongo query that was performed.
+	Cursor struct {
+		// The URL safe previous page cursor to pass in a Find call to get the previous page.
+		// This is set to the empty string if there is no previous page.
+		Previous string
+		// The URL safe next page cursor to pass in a Find call to get the next page.
+		// This is set to the empty string if there is no next page.
+		Next string
+		// true if there is a previous page, false otherwise
+		HasPrevious bool
+		// true if there is a next page, false otherwise
+		HasNext bool
+		// Total count of documents matching filter - only computed if CountTotal is True
+		Count int
+	}
+)
 
 // Find executes a find mongo query by using the provided FindParams, fills the passed in result
 // slice pointer and returns a Cursor.
-var Find = func(p FindParams, results interface{}) (Cursor, error) {
+func Find(p FindParams, results interface{}) (Cursor, error) {
 	var err error
 	if results == nil {
 		return Cursor{}, errors.New("results can't be nil")
@@ -241,7 +243,7 @@ var parseCursor = func(cursor string, shouldSecondarySortOnID bool) ([]interface
 }
 
 // decodeCursor decodes cursor data that was previously encoded with createCursor
-var decodeCursor = func(cursor string) (bson.D, error) {
+func decodeCursor(cursor string) (bson.D, error) {
 	var cursorData bson.D
 	data, err := base64.RawURLEncoding.DecodeString(cursor)
 	if err != nil {
@@ -256,7 +258,7 @@ var executeCountQuery = func(collection *mgo.Collection, queries []bson.M) (int,
 	return collection.Find(bson.M{"$and": queries}).Count()
 }
 
-var generateCursorQuery = func(shouldSecondarySortOnID bool, paginatedField string, comparisonOp string, cursorFieldValues []interface{}) (bson.M, error) {
+func generateCursorQuery(shouldSecondarySortOnID bool, paginatedField string, comparisonOp string, cursorFieldValues []interface{}) (bson.M, error) {
 	var query bson.M
 	if (shouldSecondarySortOnID && len(cursorFieldValues) != 2) ||
 		(!shouldSecondarySortOnID && len(cursorFieldValues) != 1) {
@@ -283,7 +285,7 @@ var executeCursorQuery = func(collection *mgo.Collection, query []bson.M, sort [
 	return collection.Find(bson.M{"$and": query}).Sort(sort...).Collation(collation).Limit(limit + 1).All(results)
 }
 
-var generateCursor = func(result interface{}, paginatedField string, shouldSecondarySortOnID bool) (string, error) {
+func generateCursor(result interface{}, paginatedField string, shouldSecondarySortOnID bool) (string, error) {
 	if result == nil {
 		return "", fmt.Errorf("the spacified result must be a non nil value")
 	}
@@ -309,7 +311,7 @@ var generateCursor = func(result interface{}, paginatedField string, shouldSecon
 	return cursor, nil
 }
 
-var findStructFieldNameByBsonTag = func(structType reflect.Type, tag string) string {
+func findStructFieldNameByBsonTag(structType reflect.Type, tag string) string {
 	var structFieldName string
 	if structType == nil || tag == "" {
 		return ""
