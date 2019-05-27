@@ -1,11 +1,11 @@
 package integration
 
 import (
+	"github.com/qlik-oss/mgocursorpagination/mgocursorpagination"
 	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/qlik-oss/mgocursorpagination"
 )
 
 type (
