@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -314,17 +315,17 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 }
 
 func findStructFieldNameByBsonTag(structType reflect.Type, tag string) string {
-	var structFieldName string
 	if structType == nil || tag == "" {
 		return ""
 	}
 	for i := 0; i < structType.NumField(); i++ {
 		currentField := structType.Field(i)
-		if string(currentField.Tag) == fmt.Sprintf("bson:\"%s\"", tag) {
-			structFieldName = currentField.Name
+		bsonTag := fmt.Sprintf("bson:\"%s\"", tag)
+		if strings.Contains(string(currentField.Tag), bsonTag) {
+			return currentField.Name
 		}
 	}
-	return structFieldName
+	return ""
 }
 
 // encodeCursor encodes and returns cursor data that is url safe
