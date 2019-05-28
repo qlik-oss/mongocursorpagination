@@ -13,9 +13,9 @@ import (
 )
 
 type item struct {
-	ID        bson.ObjectId `bson:"_id"`
-	Name      string        `bson:"name"`
-	CreatedAt time.Time     `bson:"createdAt"`
+	ID        bson.ObjectId `json:"id" bson:"_id"`
+	Name      string        `json:"name" bson:"name"`
+	CreatedAt time.Time     `json:"createdAt" bson:"createdAt"`
 }
 
 func TestFind(t *testing.T) {
