@@ -42,31 +42,31 @@ mgo.Index{
 
 The [items store](./test/integration/items_store.go) offers a method to find items (e.g. by name) and paginate the results using the [find function](./mgocursor/find.go) exposed by `mgocursorpagination`:
 ```go
-import "github.com/qlik-oss/mgocursorpagination"
+import "github.com/qlik-oss/mongocursorpagination/mgocursorpagination"
 ...
 
 // Find returns paginated items from the database matching the provided query
 func (m *mongoStore) Find(query bson.M, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]Item, mgocursor.Cursor, error) {
-	fp := mgocursor.FindParams{
+    fp := mgocursor.FindParams{
         Collection:     m.col,
-		Query:          query,
-		Limit:          limit,
-		SortAscending:  sortAscending,
-		PaginatedField: paginatedField,
-		Collation:      &collation,
-		Next:           next,
-		Previous:       previous,
-		CountTotal:     true,
-	}
-	var items []Item
-	c, err := mgocursor.Find(fp, &items)
-	cursor := mgocursor.Cursor{
-		Previous:    c.Previous,
-		Next:        c.Next,
-		HasPrevious: c.HasPrevious,
-		HasNext:     c.HasNext,
-	}
-	return items, cursor, err
+        Query:          query,
+        Limit:          limit,
+        SortAscending:  sortAscending,
+        PaginatedField: paginatedField,
+        Collation:      &collation,
+        Next:           next,
+        Previous:       previous,
+        CountTotal:     true,
+    }
+    var items []Item
+    c, err := mgocursor.Find(fp, &items)
+    cursor := mgocursor.Cursor{
+        Previous:    c.Previous,
+        Next:        c.Next,
+        HasPrevious: c.HasPrevious,
+        HasNext:     c.HasNext,
+    }
+    return items, cursor, err
 }
 ```
 
