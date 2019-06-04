@@ -290,10 +290,15 @@ var executeCursorQuery = func(db *mgo.Database, collectionName string, query []b
 
 func generateCursor(result interface{}, paginatedField string, shouldSecondarySortOnID bool) (string, error) {
 	if result == nil {
-		return "", fmt.Errorf("the spacified result must be a non nil value")
+		return "", fmt.Errorf("the specified result must be a non nil value")
 	}
 	// Find the result struct field name that has a tag matching the paginated filed name
 	resultStructFieldName := findStructFieldNameByBsonTag(reflect.TypeOf(result), paginatedField)
+	// Check if a tag matching the paginated filed name was found
+	if resultStructFieldName == "" {
+		return "", fmt.Errorf(fmt.Sprintf("paginated field %s not found", paginatedField))
+	}
+
 	// Get the value of the resultStructFieldName
 	paginatedFieldValue := reflect.ValueOf(result).FieldByName(resultStructFieldName).Interface()
 	// Set the cursor data
@@ -320,9 +325,17 @@ func findStructFieldNameByBsonTag(structType reflect.Type, tag string) string {
 	}
 	for i := 0; i < structType.NumField(); i++ {
 		currentField := structType.Field(i)
-		bsonTag := fmt.Sprintf("bson:\"%s\"", tag)
-		if strings.Contains(string(currentField.Tag), bsonTag) {
-			return currentField.Name
+		// Lookup for a bson key tag value
+		if value, ok := currentField.Tag.Lookup("bson"); ok {
+			// Check if the value has additional flags
+			if idx := strings.IndexByte(value, ','); idx >= 0 {
+				// Substring the key only
+				value = value[:idx]
+			}
+
+			if value == tag {
+				return currentField.Name
+			}
 		}
 	}
 	return ""

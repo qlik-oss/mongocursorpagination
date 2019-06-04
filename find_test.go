@@ -15,6 +15,7 @@ import (
 type item struct {
 	ID        bson.ObjectId `json:"id" bson:"_id"`
 	Name      string        `json:"name" bson:"name"`
+	UserID    string        `json:"userId" bson:"userId,omitempty"`
 	CreatedAt time.Time     `json:"createdAt" bson:"createdAt"`
 }
 
@@ -379,7 +380,7 @@ func TestGenerateCursorQuery(t *testing.T) {
 		expectedErr             error
 	}{
 		{
-			"error when wrong nuber of cursor field values specified and shouldSecondarySortOnID is true",
+			"error when wrong number of cursor field values specified and shouldSecondarySortOnID is true",
 			true,
 			"name",
 			"$gt",
@@ -388,7 +389,7 @@ func TestGenerateCursorQuery(t *testing.T) {
 			errors.New("wrong number of cursor field values specified"),
 		},
 		{
-			"error when wrong nuber of cursor field values specified and shouldSecondarySortOnID is false",
+			"error when wrong number of cursor field values specified and shouldSecondarySortOnID is false",
 			false,
 			"_id",
 			"$lt",
@@ -469,7 +470,15 @@ func TestGenerateCursor(t *testing.T) {
 			"_id",
 			false,
 			"",
-			errors.New("the spacified result must be a non nil value"),
+			errors.New("the specified result must be a non nil value"),
+		},
+		{
+			"errors when paginated field not found",
+			item{},
+			"creatorId",
+			false,
+			"",
+			errors.New("paginated field creatorId not found"),
 		},
 	}
 	for _, tc := range cases {
@@ -493,6 +502,12 @@ func TestFindStructFieldNameByBsonTag(t *testing.T) {
 			reflect.TypeOf(item{}),
 			"name",
 			"Name",
+		},
+		{
+			"return struct field name when tag has additional flags",
+			reflect.TypeOf(item{}),
+			"userId",
+			"UserID",
 		},
 		{
 			"return empty struct field name when a non matching bson tag specified",
