@@ -1,17 +1,17 @@
-[![CircleCI](https://circleci.com/gh/qlik-oss/mgocursorpagination.svg?style=svg)](https://circleci.com/gh/qlik-oss/mgocursorpagination/tree/master)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/4e4e0f41b11af79ca677/test_coverage)](https://codeclimate.com/github/qlik-oss/mgocursorpagination/test_coverage)
-[![GoDoc](https://godoc.org/github.com/qlik-oss/mgocursorpagination?status.svg)](https://godoc.org/github.com/qlik-oss/mgocursorpagination)
+[![CircleCI](https://circleci.com/gh/qlik-oss/mongocursorpagination.svg?style=svg)](https://circleci.com/gh/qlik-oss/mongocursorpagination/tree/master)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/4e4e0f41b11af79ca677/test_coverage)](https://codeclimate.com/github/qlik-oss/mongocursorpagination/test_coverage)
+[![GoDoc](https://godoc.org/github.com/qlik-oss/mongocursorpagination?status.svg)](https://godoc.org/github.com/qlik-oss/mongocursorpagination)
 
-# mgocursorpagination
+# mongocursorpagination
 
 A go package for the mgo mongo driver ([globalsign/mgo](https://github.com/globalsign/mgo)) which ports the find functionality offered by the node.js [mongo-cursor-pagination](https://github.com/mixmaxhq/mongo-cursor-pagination) module. Also inspired by [icza/minquery](https://github.com/icza/minquery).
 
-`mgocursorpagination` helps implementing cursor based pagination in your mongodb backed service:
+`mongocursorpagination` helps implementing cursor based pagination in your mongodb backed service:
 ```
 ...where an API passes back a "cursor" (an opaque string) to tell the caller where to query the next or previous pages. The cursor is usually passed using query parameters next and previous...
 ```
 
-`mgocursorpagination` helps by providing a function that make it easy to query within a Mongo collection and returning a url-safe string that you can return with your HTTP response.
+`mongocursorpagination` helps by providing a function that make it easy to query within a Mongo collection and returning a url-safe string that you can return with your HTTP response.
 
 ## Example
 
@@ -40,9 +40,9 @@ mgo.Index{
 }
 ```
 
-The [items store](./test/integration/items_store.go) offers a method to find items (e.g. by name) and paginate the results using the [find function](./mgocursor/find.go) exposed by `mgocursorpagination`:
+The [items store](./test/integration/items_store.go) offers a method to find items (e.g. by name) and paginate the results using the [find function](./mgocursor/find.go) exposed by `mongocursorpagination`:
 ```go
-import "github.com/qlik-oss/mgocursorpagination"
+import "github.com/qlik-oss/mongocursorpagination"
 ...
 
 // Find returns paginated items from the database matching the provided query

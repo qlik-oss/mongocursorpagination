@@ -4,7 +4,7 @@
 default-job-init: &default-job-init
     docker:
       - image: qlik/go-build
-    working_directory: /go/src/github.com/qlik-oss/mgocursorpagination
+    working_directory: /go/src/github.com/qlik-oss/mongocursorpagination
 remote_docker_version: &remote_docker_version
     version: 18.06.0-ce
 load-test-docker-image: &load-test-docker-image
@@ -28,7 +28,7 @@ jobs:
           name: Build a test image
           command: |
             make build-test-docker
-            docker save -o /workspace/docker-test.tar mgocursorpagination-test:latest
+            docker save -o /workspace/docker-test.tar mongocursorpagination-test:latest
       - persist_to_workspace:
           root: /workspace
           paths:
@@ -46,7 +46,7 @@ jobs:
       - run:
           name: Lint
           command: |
-            docker run --rm mgocursorpagination-test make lint
+            docker run --rm mongocursorpagination-test make lint
   unit-test:
     <<: *default-job-init
     steps:
@@ -60,8 +60,8 @@ jobs:
       - run:
           name: Test
           command: |
-            docker run --name unit-test mgocursorpagination-test make test-unit-code-climate
-            docker cp unit-test:/go/src/github.com/qlik-oss/mgocursorpagination/unit.cover /workspace/.
+            docker run --name unit-test mongocursorpagination-test make test-unit-code-climate
+            docker cp unit-test:/go/src/github.com/qlik-oss/mongocursorpagination/unit.cover /workspace/.
       - persist_to_workspace:
           root: /workspace
           paths:
@@ -79,8 +79,8 @@ jobs:
       - run:
           name: Test
           command: |
-            docker run --name integration-test -v /var/run/docker.sock:/var/run/docker.sock mgocursorpagination-test make test-integration-code-climate ARGS="-docker=true"
-            docker cp integration-test:/go/src/github.com/qlik-oss/mgocursorpagination/integration.cover /workspace/.
+            docker run --name integration-test -v /var/run/docker.sock:/var/run/docker.sock mongocursorpagination-test make test-integration-code-climate ARGS="-docker=true"
+            docker cp integration-test:/go/src/github.com/qlik-oss/mongocursorpagination/integration.cover /workspace/.
       - persist_to_workspace:
           root: /workspace
           paths:
@@ -98,7 +98,7 @@ jobs:
             chmod +x ./cc-test-reporter
             echo "mode: set" > cover.out
             grep -h -v "^mode:" /workspace/unit.cover /workspace/integration.cover >> cover.out
-            sed -i "s/github.com\/qlik-oss\/mgocursorpagination\///" cover.out
+            sed -i "s/github.com\/qlik-oss\/mongocursorpagination\///" cover.out
             go get github.com/cbrand/gocov-merge
             gocov-merge cover.out > c.out
             cat c.out
