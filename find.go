@@ -294,7 +294,7 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 	}
 	// Find the result struct field name that has a tag matching the paginated filed name
 	resultStructFieldName := findStructFieldNameByBsonTag(reflect.TypeOf(result), paginatedField)
-	// Check if a tag matching the paginated filed name was found
+	// Check if a tag matching the paginated field name was found
 	if resultStructFieldName == "" {
 		return "", fmt.Errorf("paginated field %s not found", paginatedField)
 	}
