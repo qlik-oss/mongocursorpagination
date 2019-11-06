@@ -201,7 +201,7 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 		// Find the result struct id field name that has a tag matching the _id field name
 		resultStructIDFieldName := findStructFieldNameByBsonTag(reflect.TypeOf(result), "_id")
 		// Get the value of the ID field
-		id := reflect.ValueOf(result).FieldByName(resultStructIDFieldName).String()
+		id := reflect.ValueOf(result).FieldByName(resultStructIDFieldName).Interface().(primitive.ObjectID)
 		cursorData = append(cursorData, bson.E{Key: "_id", Value: id})
 	}
 	// Encode the cursor data into a url safe string
@@ -278,6 +278,7 @@ func executeCursorQuery(c *mongo.Collection, query []bson.M, sort bson.D, limit 
 	options := options.Find()
 	options.SetSort(sort)
 	options.SetLimit(limit + 1)
+
 	if collation != nil {
 		options.SetCollation(collation)
 	}
