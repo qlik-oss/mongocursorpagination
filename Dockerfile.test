@@ -1,3 +1,4 @@
-FROM golang:1.11-stretch
+FROM golang:1.14-alpine
 WORKDIR /go/src/github.com/qlik-oss/mongocursorpagination/
+RUN apk add --no-cache curl build-base
 COPY . /go/src/github.com/qlik-oss/mongocursorpagination/
