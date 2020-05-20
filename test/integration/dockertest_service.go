@@ -94,7 +94,7 @@ func NewMongoService(withinDocker bool) *DockerService {
 	return &DockerService{
 		DockerHostname: dockerHostname,
 		Image:          "mongo",
-		Version:        "3.7-jessie",
+		Version:        "4.2",
 		PublishedPort:  "27017",
 		ContainerPort:  "27017",
 		Env:            []string{},
