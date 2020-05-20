@@ -1,4 +1,4 @@
-package mongocursorpagination
+package mgo
 
 import (
 	"encoding/base64"
