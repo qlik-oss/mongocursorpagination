@@ -2,17 +2,19 @@
 ##  CODECLIMATE_REPO_TOKEN
 
 default-job-init: &default-job-init
-    docker:
-      - image: qlik/go-build
-    working_directory: /go/src/github.com/qlik-oss/mongocursorpagination
+  working_directory: /go/src/github.com/qlik-oss/mongocursorpagination
+  docker:
+    - image: qlik/go-build
+  environment:
+    DOCKER_BUILDKIT: "1"
 remote_docker_version: &remote_docker_version
-    version: 18.06.0-ce
+    version: 18.09.3
 load-test-docker-image: &load-test-docker-image
     name: Load test docker image
     command: |
       docker image load -i /workspace/docker-test.tar
 
-version: 2
+version: 2.1
 jobs:
   build-test-image:
     <<: *default-job-init
@@ -20,10 +22,15 @@ jobs:
       - setup_remote_docker:
           <<: *remote_docker_version
       - checkout
-      -  run:
-          name: Set up workspace
+      - run:
+          name: Create workspace dir
           command: |
-              mkdir -p /workspace
+            mkdir -p /workspace
+      - run:
+          name: Pull public Docker images in the background
+          background: true
+          command: |
+            docker pull golang:1.14-alpine
       - run:
           name: Build a test image
           command: |

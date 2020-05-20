@@ -1,6 +1,6 @@
-// Package mgocursorpagination eases the computation of pagination information of a find mongo query
+// Package mongocursorpagination eases the computation of pagination information of a find mongo query
 // by augmenting the base query with cursor information and returning a cursor.
-package mgocursorpagination
+package mongocursorpagination
 
 import (
 	"encoding/base64"
