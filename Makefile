@@ -9,7 +9,7 @@ mod:
 
 # Update dependencies
 mod-update:
-	@go get -u /cmd/manager
+	@go get -u .
 	@$(MAKE) mod
 
 # Lint the code
