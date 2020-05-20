@@ -17,9 +17,10 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/ory/dockertest v3.3.5+incompatible
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0 // indirect
 	github.com/stretchr/testify v1.4.0
+	go.mongodb.org/mongo-driver v1.3.3
 	golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7 // indirect
 	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
