@@ -4,7 +4,7 @@
 
 # mongocursorpagination
 
-A go package for the mgo mongo driver ([globalsign/mgo](https://github.com/globalsign/mgo)) which ports the find functionality offered by the node.js [mongo-cursor-pagination](https://github.com/mixmaxhq/mongo-cursor-pagination) module. Also inspired by [icza/minquery](https://github.com/icza/minquery).
+A go package for the mgo mongo driver ([globalsign/mgo](https://github.com/globalsign/mgo)) and the official mongo driver [mongodb/mongo-go-driver](https://github.com/mongodb/mongo-go-driver) which ports the find functionality offered by the [mongo-cursor-pagination](https://github.com/mixmaxhq/mongo-cursor-pagination) node.js module. Also inspired by [icza/minquery](https://github.com/icza/minquery).
 
 `mongocursorpagination` helps implementing cursor based pagination in your mongodb backed service:
 ```
@@ -13,7 +13,9 @@ A go package for the mgo mongo driver ([globalsign/mgo](https://github.com/globa
 
 `mongocursorpagination` helps by providing a function that make it easy to query within a Mongo collection and returning a url-safe string that you can return with your HTTP response.
 
-## Example
+## Examples
+
+### mgo
 
 For this example we will be using an items mongo collection where items look like this:
 ```go
@@ -42,7 +44,7 @@ mgo.Index{
 
 The [items store](./test/integration/items_store.go) offers a method to find items (e.g. by name) and paginate the results using the [find function](./mgocursor/find.go) exposed by `mongocursorpagination`:
 ```go
-import "github.com/qlik-oss/mongocursorpagination"
+import "github.com/qlik-oss/mongocursorpagination/mgo"
 ...
 
 // Find returns paginated items from the database matching the provided query
@@ -92,3 +94,7 @@ foundItems, cursor, err = store.Find(searchQuery, "", cursor.Previous, 2, true, 
 ```
 
 See [items_store_test.go](./test/integration/items_store_test.go) for the integration test that uses the [items store](./test/integration/items_store.go)'s find method.
+
+### mongo-go-driver
+
+TODO

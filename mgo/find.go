@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	mcpbson "github.com/qlik-oss/mongocursorpagination/bson"
 )
 
 type (
@@ -134,7 +134,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 			cursorValues = previousCursorValues
 		}
 		var cursorQuery bson.M
-		cursorQuery, err = generateCursorQuery(shouldSecondarySortOnID, p.PaginatedField, comparisonOp, cursorValues)
+		cursorQuery, err = mcpbson.GenerateCursorQuery(shouldSecondarySortOnID, p.PaginatedField, comparisonOp, cursorValues)
 		if err != nil {
 			return Cursor{}, err
 		}
@@ -261,26 +261,6 @@ var executeCountQuery = func(db *mgo.Database, collectionName string, queries []
 	return db.C(collectionName).Find(bson.M{"$and": queries}).Count()
 }
 
-func generateCursorQuery(shouldSecondarySortOnID bool, paginatedField string, comparisonOp string, cursorFieldValues []interface{}) (bson.M, error) {
-	var query bson.M
-	if (shouldSecondarySortOnID && len(cursorFieldValues) != 2) ||
-		(!shouldSecondarySortOnID && len(cursorFieldValues) != 1) {
-		return nil, errors.New("wrong number of cursor field values specified")
-	}
-	if shouldSecondarySortOnID {
-		query = bson.M{"$or": []bson.M{
-			{paginatedField: bson.M{comparisonOp: cursorFieldValues[0]}},
-			{"$and": []bson.M{
-				{paginatedField: bson.M{"$eq": cursorFieldValues[0]}},
-				{"_id": bson.M{comparisonOp: cursorFieldValues[1]}},
-			}},
-		}}
-	} else {
-		query = bson.M{paginatedField: bson.M{comparisonOp: cursorFieldValues[0]}}
-	}
-	return query, nil
-}
-
 var executeCursorQuery = func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 	if collation == nil {
 		return db.C(collectionName).Find(bson.M{"$and": query}).Sort(sort...).Limit(limit + 1).All(results)
@@ -293,7 +273,7 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 		return "", fmt.Errorf("the specified result must be a non nil value")
 	}
 	// Find the result struct field name that has a tag matching the paginated filed name
-	resultStructFieldName := findStructFieldNameByBsonTag(reflect.TypeOf(result), paginatedField)
+	resultStructFieldName := mcpbson.FindStructFieldNameByBsonTag(reflect.TypeOf(result), paginatedField)
 	// Check if a tag matching the paginated field name was found
 	if resultStructFieldName == "" {
 		return "", fmt.Errorf("paginated field %s not found", paginatedField)
@@ -306,7 +286,7 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 	cursorData = append(cursorData, bson.DocElem{Name: paginatedField, Value: paginatedFieldValue})
 	if shouldSecondarySortOnID {
 		// Find the result struct id field name that has a tag matching the _id field name
-		resultStructIDFieldName := findStructFieldNameByBsonTag(reflect.TypeOf(result), "_id")
+		resultStructIDFieldName := mcpbson.FindStructFieldNameByBsonTag(reflect.TypeOf(result), "_id")
 		// Get the value of the ID field
 		id := reflect.ValueOf(result).FieldByName(resultStructIDFieldName).String()
 		cursorData = append(cursorData, bson.DocElem{Name: "_id", Value: id})
@@ -317,28 +297,6 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 		return "", fmt.Errorf("failed to encode cursor using %v: %s", cursorData, err)
 	}
 	return cursor, nil
-}
-
-func findStructFieldNameByBsonTag(structType reflect.Type, tag string) string {
-	if structType == nil || tag == "" {
-		return ""
-	}
-	for i := 0; i < structType.NumField(); i++ {
-		currentField := structType.Field(i)
-		// Lookup for a bson key tag value
-		if value, ok := currentField.Tag.Lookup("bson"); ok {
-			// Check if the value has additional flags
-			if idx := strings.IndexByte(value, ','); idx >= 0 {
-				// Substring the key only
-				value = value[:idx]
-			}
-
-			if value == tag {
-				return currentField.Name
-			}
-		}
-	}
-	return ""
 }
 
 // encodeCursor encodes and returns cursor data that is url safe
