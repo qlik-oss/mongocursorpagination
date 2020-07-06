@@ -17,10 +17,14 @@ import (
 )
 
 type (
+	Collection interface{
+		CountDocuments(context.Context, interface{}, ...*options.CountOptions) (int64, error)
+		Find(context.Context, interface{}, ...*options.FindOptions) (*mongo.Cursor, error)
+	}
 	// FindParams holds the parameters to be used in a paginated find mongo query that will return a
 	// Cursor.
 	FindParams struct {
-		Collection *mongo.Collection
+		Collection Collection
 
 		// The find query to augment with pagination
 		Query primitive.M
@@ -252,7 +256,7 @@ func decodeCursor(cursor string) (bson.D, error) {
 	return cursorData, err
 }
 
-var executeCountQuery = func(c *mongo.Collection, queries []bson.M) (int, error) {
+var executeCountQuery = func(c Collection, queries []bson.M) (int, error) {
 	ctx := context.Background()
 	count, err := c.CountDocuments(ctx, bson.M{"$and": queries})
 	if err != nil {
@@ -261,7 +265,7 @@ var executeCountQuery = func(c *mongo.Collection, queries []bson.M) (int, error)
 	return int(count), nil
 }
 
-func executeCursorQuery(c *mongo.Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, results interface{}) error {
+func executeCursorQuery(c Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, results interface{}) error {
 	options := options.Find()
 	options.SetSort(sort)
 	options.SetLimit(limit + 1)
