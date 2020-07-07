@@ -77,6 +77,13 @@ type (
 // Find executes a find mongo query by using the provided FindParams, fills the passed in result
 // slice pointer and returns a Cursor.
 func Find(p FindParams, results interface{}) (Cursor, error) {
+	ctx := context.Background()
+	return FindWithContext(ctx, p, results)
+}
+
+// FindWithContext executes a find mongo query by using the provided FindParams, fills the passed in result
+// slice pointer and returns a Cursor.
+func FindWithContext(ctx context.Context, p FindParams, results interface{}) (Cursor, error) {
 	var err error
 	if results == nil {
 		return Cursor{}, errors.New("results can't be nil")
@@ -121,7 +128,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	// Compute total count of documents matching filter - only computed if CountTotal is True
 	var count int
 	if p.CountTotal {
-		count, err = executeCountQuery(p.Collection, queries)
+		count, err = executeCountQuery(ctx, p.Collection, queries)
 		if err != nil {
 			return Cursor{}, err
 		}
@@ -152,7 +159,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	}
 
 	// Execute the augmented query, get an additional element to see if there's another page
-	err = executeCursorQuery(p.Collection, queries, sort, p.Limit, p.Collation, results)
+	err = executeCursorQuery(ctx, p.Collection, queries, sort, p.Limit, p.Collation, results)
 	if err != nil {
 		return Cursor{}, err
 	}
@@ -256,8 +263,7 @@ func decodeCursor(cursor string) (bson.D, error) {
 	return cursorData, err
 }
 
-var executeCountQuery = func(c Collection, queries []bson.M) (int, error) {
-	ctx := context.Background()
+var executeCountQuery = func(ctx context.Context, c Collection, queries []bson.M) (int, error) {
 	count, err := c.CountDocuments(ctx, bson.M{"$and": queries})
 	if err != nil {
 		return 0, err
@@ -265,7 +271,7 @@ var executeCountQuery = func(c Collection, queries []bson.M) (int, error) {
 	return int(count), nil
 }
 
-func executeCursorQuery(c Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, results interface{}) error {
+func executeCursorQuery(ctx context.Context, c Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, results interface{}) error {
 	options := options.Find()
 	options.SetSort(sort)
 	options.SetLimit(limit + 1)
@@ -273,7 +279,6 @@ func executeCursorQuery(c Collection, query []bson.M, sort bson.D, limit int64, 
 	if collation != nil {
 		options.SetCollation(collation)
 	}
-	ctx := context.Background()
 	cursor, err := c.Find(ctx, bson.M{"$and": query}, options)
 	if err != nil {
 		return err
