@@ -76,14 +76,7 @@ type (
 
 // Find executes a find mongo query by using the provided FindParams, fills the passed in result
 // slice pointer and returns a Cursor.
-func Find(p FindParams, results interface{}) (Cursor, error) {
-	ctx := context.Background()
-	return FindWithContext(ctx, p, results)
-}
-
-// FindWithContext executes a find mongo query by using the provided FindParams, fills the passed in result
-// slice pointer and returns a Cursor.
-func FindWithContext(ctx context.Context, p FindParams, results interface{}) (Cursor, error) {
+func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error) {
 	var err error
 	if results == nil {
 		return Cursor{}, errors.New("results can't be nil")
