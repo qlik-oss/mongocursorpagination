@@ -1,4 +1,4 @@
-package mgo
+package integration
 
 import (
 	"time"
@@ -18,36 +18,37 @@ type (
 
 	// Store allows operations on items.
 	Store interface {
-		Create(i Item) (Item, error)
-		Find(query bson.M, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]Item, mongocursorpagination.Cursor, error)
+		Create(i *Item) (*Item, error)
+		Find(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]*Item, mongocursorpagination.Cursor, error)
 		EnsureIndices() error
 	}
 
-	mongoStore struct {
+	mgoStore struct {
 		col *mgo.Collection
 	}
 )
 
-// NewMongoStore returns a new Store.
-func NewMongoStore(col *mgo.Collection) Store {
-	return &mongoStore{
+// NewMgoStore returns a new Store that uses mgo.
+func NewMgoStore(col *mgo.Collection) Store {
+	return &mgoStore{
 		col: col,
 	}
 }
 
 // Create creates an item in the database and returns it
-func (m *mongoStore) Create(c Item) (Item, error) {
+func (m *mgoStore) Create(c *Item) (*Item, error) {
 	c.ID = bson.NewObjectId() // Generate ObjectID
 	c.CreatedAt = bson.Now().UTC()
 	return c, m.col.Insert(c)
 }
 
 // Find returns paginated items from the database matching the provided query
-func (m *mongoStore) Find(query bson.M, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]Item, mongocursorpagination.Cursor, error) {
+func (m *mgoStore) Find(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]*Item, mongocursorpagination.Cursor, error) {
+	bsonQuery := query.(bson.M)
 	fp := mongocursorpagination.FindParams{
 		DB:             m.col.Database,
 		CollectionName: m.col.Name,
-		Query:          query,
+		Query:          bsonQuery,
 		Limit:          limit,
 		SortAscending:  sortAscending,
 		PaginatedField: paginatedField,
@@ -56,7 +57,7 @@ func (m *mongoStore) Find(query bson.M, next string, previous string, limit int,
 		Previous:       previous,
 		CountTotal:     true,
 	}
-	var items []Item
+	var items []*Item
 	c, err := mongocursorpagination.Find(fp, &items)
 	cursor := mongocursorpagination.Cursor{
 		Previous:    c.Previous,
@@ -68,7 +69,7 @@ func (m *mongoStore) Find(query bson.M, next string, previous string, limit int,
 }
 
 // EnsureIndices creates indices and returns any error
-func (m *mongoStore) EnsureIndices() error {
+func (m *mgoStore) EnsureIndices() error {
 	err := m.col.EnsureIndex(mgo.Index{
 		Name: "cover_find_by_name",
 		Key: []string{
