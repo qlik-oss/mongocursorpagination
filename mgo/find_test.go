@@ -139,7 +139,7 @@ func TestFind(t *testing.T) {
 				Limit:          2,
 				CountTotal:     true,
 			},
-			results: &[]item{},
+			results: &[]*item{},
 			executeCountQuery: func(db *mgo.Database, collectionName string, queries []bson.M) (int, error) {
 				return 2, nil
 			},
