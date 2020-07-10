@@ -28,7 +28,6 @@ func TestFind(t *testing.T) {
 		executeCursorQuery func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error
 		expectedCursor     Cursor
 		expectedErr        error
-		pointer            bool
 	}{
 		{
 			name:               "errors when results is nil",
@@ -130,7 +129,7 @@ func TestFind(t *testing.T) {
 			expectedErr:    errors.New("error"),
 		},
 		{
-			name: "return cursor with next and count also populates results when next and prev not specified",
+			name: "return cursor with next and count also populates results when next and prev not specified (using item pointer)",
 			findParams: FindParams{
 				DB:             &mgo.Database{},
 				CollectionName: "items",
