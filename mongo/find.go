@@ -17,10 +17,14 @@ import (
 )
 
 type (
+	Collection interface {
+		CountDocuments(context.Context, interface{}, ...*options.CountOptions) (int64, error)
+		Find(context.Context, interface{}, ...*options.FindOptions) (*mongo.Cursor, error)
+	}
 	// FindParams holds the parameters to be used in a paginated find mongo query that will return a
 	// Cursor.
 	FindParams struct {
-		Collection *mongo.Collection
+		Collection Collection
 
 		// The find query to augment with pagination
 		Query primitive.M
@@ -72,7 +76,7 @@ type (
 
 // Find executes a find mongo query by using the provided FindParams, fills the passed in result
 // slice pointer and returns a Cursor.
-func Find(p FindParams, results interface{}) (Cursor, error) {
+func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error) {
 	var err error
 	if results == nil {
 		return Cursor{}, errors.New("results can't be nil")
@@ -117,7 +121,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	// Compute total count of documents matching filter - only computed if CountTotal is True
 	var count int
 	if p.CountTotal {
-		count, err = executeCountQuery(p.Collection, queries)
+		count, err = executeCountQuery(ctx, p.Collection, queries)
 		if err != nil {
 			return Cursor{}, err
 		}
@@ -148,7 +152,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	}
 
 	// Execute the augmented query, get an additional element to see if there's another page
-	err = executeCursorQuery(p.Collection, queries, sort, p.Limit, p.Collation, results)
+	err = executeCursorQuery(ctx, p.Collection, queries, sort, p.Limit, p.Collation, results)
 	if err != nil {
 		return Cursor{}, err
 	}
@@ -252,8 +256,7 @@ func decodeCursor(cursor string) (bson.D, error) {
 	return cursorData, err
 }
 
-var executeCountQuery = func(c *mongo.Collection, queries []bson.M) (int, error) {
-	ctx := context.Background()
+var executeCountQuery = func(ctx context.Context, c Collection, queries []bson.M) (int, error) {
 	count, err := c.CountDocuments(ctx, bson.M{"$and": queries})
 	if err != nil {
 		return 0, err
@@ -261,7 +264,7 @@ var executeCountQuery = func(c *mongo.Collection, queries []bson.M) (int, error)
 	return int(count), nil
 }
 
-func executeCursorQuery(c *mongo.Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, results interface{}) error {
+func executeCursorQuery(ctx context.Context, c Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, results interface{}) error {
 	options := options.Find()
 	options.SetSort(sort)
 	options.SetLimit(limit + 1)
@@ -269,7 +272,6 @@ func executeCursorQuery(c *mongo.Collection, query []bson.M, sort bson.D, limit 
 	if collation != nil {
 		options.SetCollation(collation)
 	}
-	ctx := context.Background()
 	cursor, err := c.Find(ctx, bson.M{"$and": query}, options)
 	if err != nil {
 		return err
@@ -285,23 +287,32 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 	if result == nil {
 		return "", fmt.Errorf("the specified result must be a non nil value")
 	}
-	// Find the result struct field name that has a tag matching the paginated filed name
-	resultStructFieldName := mcpbson.FindStructFieldNameByBsonTag(reflect.TypeOf(result), paginatedField)
+	// Handle pointer values and reduce number of times reflection is done on the same type.
+	var typ reflect.Type
+	val := reflect.ValueOf(result)
+	if val.Kind() == reflect.Ptr {
+		val = reflect.Indirect(val)
+		typ = val.Type()
+	} else {
+		typ = val.Type()
+	}
+	// Find the result struct field name that has a tag matching the paginated filed nam
+	resultStructFieldName := mcpbson.FindStructFieldNameByBsonTag(typ, paginatedField)
 	// Check if a tag matching the paginated field name was found
 	if resultStructFieldName == "" {
 		return "", fmt.Errorf("paginated field %s not found", paginatedField)
 	}
 
 	// Get the value of the resultStructFieldName
-	paginatedFieldValue := reflect.ValueOf(result).FieldByName(resultStructFieldName).Interface()
+	paginatedFieldValue := val.FieldByName(resultStructFieldName).Interface()
 	// Set the cursor data
 	cursorData := make(bson.D, 0, 2)
 	cursorData = append(cursorData, bson.E{Key: paginatedField, Value: paginatedFieldValue})
 	if shouldSecondarySortOnID {
 		// Find the result struct id field name that has a tag matching the _id field name
-		resultStructIDFieldName := mcpbson.FindStructFieldNameByBsonTag(reflect.TypeOf(result), "_id")
+		resultStructIDFieldName := mcpbson.FindStructFieldNameByBsonTag(typ, "_id")
 		// Get the value of the ID field
-		id := reflect.ValueOf(result).FieldByName(resultStructIDFieldName).Interface().(primitive.ObjectID)
+		id := val.FieldByName(resultStructIDFieldName).Interface().(primitive.ObjectID)
 		cursorData = append(cursorData, bson.E{Key: "_id", Value: id})
 	}
 	// Encode the cursor data into a url safe string

@@ -129,7 +129,7 @@ func TestFind(t *testing.T) {
 			expectedErr:    errors.New("error"),
 		},
 		{
-			name: "return cursor with next and count also populates results when next and prev not specified",
+			name: "return cursor with next and count also populates results when next and prev not specified (using item pointer)",
 			findParams: FindParams{
 				DB:             &mgo.Database{},
 				CollectionName: "items",
@@ -139,16 +139,16 @@ func TestFind(t *testing.T) {
 				Limit:          2,
 				CountTotal:     true,
 			},
-			results: &[]item{},
+			results: &[]*item{},
 			executeCountQuery: func(db *mgo.Database, collectionName string, queries []bson.M) (int, error) {
 				return 2, nil
 			},
 			executeCursorQuery: func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 				resultv := reflect.ValueOf(results)
-				resultv.Elem().Set(reflect.ValueOf([]item{
-					{ID: "111", Name: "test item 1", CreatedAt: time.Now()},
-					{ID: "222", Name: "test item 2", CreatedAt: time.Now()},
-					{ID: "333", Name: "test item 3", CreatedAt: time.Now()},
+				resultv.Elem().Set(reflect.ValueOf([]*item{
+					&item{ID: "111", Name: "test item 1", CreatedAt: time.Now()},
+					&item{ID: "222", Name: "test item 2", CreatedAt: time.Now()},
+					&item{ID: "333", Name: "test item 3", CreatedAt: time.Now()},
 				}))
 				return nil
 			},
@@ -275,10 +275,15 @@ func TestFind(t *testing.T) {
 			cursor, err := Find(tc.findParams, tc.results)
 
 			if tc.results != nil && tc.expectedErr == nil {
-				resultsSlice := tc.results.(*[]item)
-				require.Equal(t, tc.findParams.Limit, len(*resultsSlice))
+				// Handle different slice types ([]item and []*item)
+				v := reflect.ValueOf(tc.results)
+				if v.Kind() == reflect.Ptr {
+					v = reflect.Indirect(v)
+				}
+				length := v.Len()
+				require.Equal(t, tc.findParams.Limit, length)
 				if tc.findParams.CountTotal == true {
-					require.Equal(t, cursor.Count, len(*resultsSlice))
+					require.Equal(t, cursor.Count, length)
 				}
 			}
 			require.Equal(t, tc.expectedCursor, cursor)

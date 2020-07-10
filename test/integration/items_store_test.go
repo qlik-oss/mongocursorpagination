@@ -1,4 +1,4 @@
-package mgo
+package integration
 
 import (
 	"os"
@@ -17,15 +17,15 @@ func newStore(t *testing.T) Store {
 	session, err := mgo.Dial(mongoAddr)
 	require.NoError(t, err, "error connecting to mongo")
 	col := session.DB("test_db").C("items")
-	store := NewMongoStore(col)
+	store := NewMgoStore(col)
 	err = store.EnsureIndices()
 	require.NoError(t, err)
 	return store
 }
 
-func createItem(t *testing.T, store Store, name string) Item {
+func createItem(t *testing.T, store Store, name string) *Item {
 	t.Helper()
-	item := Item{
+	item := &Item{
 		ID:        "",
 		Name:      name,
 		CreatedAt: time.Now(),
