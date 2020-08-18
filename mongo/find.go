@@ -294,14 +294,14 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 	}
 	typ := val.Type()
 	if typ.String() == "bson.Raw" {
-		return generateCursorFromBSONRaw(result.(bson.Raw), paginatedField, shouldSecondarySortOnID)
+		return generateCursorFromBSONRaw(val.Interface().(bson.Raw), paginatedField, shouldSecondarySortOnID)
 	}
 	return generateCursorFromStruct(typ, val, paginatedField, shouldSecondarySortOnID)
 }
 
-func generateCursorFromBSONRaw(result interface{}, paginatedField string, shouldSecondarySortOnID bool) (string, error) {
+func generateCursorFromBSONRaw(result bson.Raw, paginatedField string, shouldSecondarySortOnID bool) (string, error) {
 	var record map[string]interface{}
-	err := bson.Unmarshal(result.(bson.Raw), &record) // assumes bson.Raw
+	err := bson.Unmarshal(result, &record) // assumes bson.Raw
 	if err != nil {
 		return "", err
 	}
