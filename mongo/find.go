@@ -297,7 +297,7 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 		typ = val.Type()
 	}
 	if typ.String() == "bson.Raw" {
-		return generateCursorFromBSONRaw(result, paginatedField, shouldSecondarySortOnID)
+		return generateCursorFromBSONRaw(result.(bson.Raw), paginatedField, shouldSecondarySortOnID)
 	}
 
 	// Find the result struct field name that has a tag matching the paginated filed nam
