@@ -277,6 +277,7 @@ func executeCursorQuery(ctx context.Context, c Collection, query []bson.M, sort 
 		return err
 	}
 	err = cursor.All(ctx, results)
+
 	if err != nil {
 		return err
 	}
@@ -292,51 +293,32 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 	if val.Kind() == reflect.Ptr {
 		val = reflect.Indirect(val)
 	}
-	typ := val.Type()
-	if typ.String() == "bson.Raw" {
-		return generateCursorFromBSONRaw(val.Interface().(bson.Raw), paginatedField, shouldSecondarySortOnID)
-	}
-	return generateCursorFromStruct(typ, val, paginatedField, shouldSecondarySortOnID)
-}
 
-func generateCursorFromBSONRaw(result bson.Raw, paginatedField string, shouldSecondarySortOnID bool) (string, error) {
-	var record map[string]interface{}
-	err := bson.Unmarshal(result, &record) // assumes bson.Raw
+	var recordAsBytes []byte
+	var err error
+
+	switch v := result.(type) {
+	case []byte:
+		recordAsBytes = v
+	default:
+		recordAsBytes, err = bson.Marshal(result)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	var recordAsMap map[string]interface{}
+	err = bson.Unmarshal(recordAsBytes, &recordAsMap)
 	if err != nil {
 		return "", err
 	}
-	paginatedFieldValue := record[paginatedField]
-	cursorData := make(bson.D, 0, 2)
-	cursorData = append(cursorData, bson.E{Key: paginatedField, Value: paginatedFieldValue})
-	if shouldSecondarySortOnID {
-		id := record["_id"]
-		cursorData = append(cursorData, bson.E{Key: "_id", Value: id})
-	}
-	cursor, err := encodeCursor(cursorData)
-	if err != nil {
-		return "", fmt.Errorf("failed to encode cursor using %v: %s", cursorData, err)
-	}
-	return cursor, nil
-}
-
-func generateCursorFromStruct(typ reflect.Type, val reflect.Value, paginatedField string, shouldSecondarySortOnID bool) (string, error) {
-	// Find the result struct field name that has a tag matching the paginated filed nam
-	resultStructFieldName := mcpbson.FindStructFieldNameByBsonTag(typ, paginatedField)
-	// Check if a tag matching the paginated field name was found
-	if resultStructFieldName == "" {
-		return "", fmt.Errorf("paginated field %s not found", paginatedField)
-	}
-
-	// Get the value of the resultStructFieldName
-	paginatedFieldValue := val.FieldByName(resultStructFieldName).Interface()
+	paginatedFieldValue := recordAsMap[paginatedField]
 	// Set the cursor data
 	cursorData := make(bson.D, 0, 2)
 	cursorData = append(cursorData, bson.E{Key: paginatedField, Value: paginatedFieldValue})
 	if shouldSecondarySortOnID {
-		// Find the result struct id field name that has a tag matching the _id field name
-		resultStructIDFieldName := mcpbson.FindStructFieldNameByBsonTag(typ, "_id")
 		// Get the value of the ID field
-		id := val.FieldByName(resultStructIDFieldName).Interface().(primitive.ObjectID)
+		id := recordAsMap["_id"]
 		cursorData = append(cursorData, bson.E{Key: "_id", Value: id})
 	}
 	// Encode the cursor data into a url safe string

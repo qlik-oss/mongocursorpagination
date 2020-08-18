@@ -273,32 +273,36 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 		return "", fmt.Errorf("the specified result must be a non nil value")
 	}
 	// Handle pointer values and reduce number of times reflection is done on the same type.
-	var typ reflect.Type
 	val := reflect.ValueOf(result)
 	if val.Kind() == reflect.Ptr {
 		val = reflect.Indirect(val)
-		typ = val.Type()
-	} else {
-		typ = val.Type()
 	}
 
-	// Find the result struct field name that has a tag matching the paginated filed name
-	resultStructFieldName := mcpbson.FindStructFieldNameByBsonTag(typ, paginatedField)
-	// Check if a tag matching the paginated field name was found
-	if resultStructFieldName == "" {
-		return "", fmt.Errorf("paginated field %s not found", paginatedField)
+	var recordAsBytes []byte
+	var err error
+
+	switch v := result.(type) {
+	case []byte:
+		recordAsBytes = v
+	default:
+		recordAsBytes, err = bson.Marshal(result)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	// Get the value of the resultStructFieldName
-	paginatedFieldValue := val.FieldByName(resultStructFieldName).Interface()
+	var recordAsMap map[string]interface{}
+	err = bson.Unmarshal(recordAsBytes, &recordAsMap)
+	if err != nil {
+		return "", err
+	}
+	paginatedFieldValue := recordAsMap[paginatedField]
 	// Set the cursor data
 	cursorData := make(bson.D, 0, 2)
 	cursorData = append(cursorData, bson.DocElem{Name: paginatedField, Value: paginatedFieldValue})
 	if shouldSecondarySortOnID {
-		// Find the result struct id field name that has a tag matching the _id field name
-		resultStructIDFieldName := mcpbson.FindStructFieldNameByBsonTag(typ, "_id")
 		// Get the value of the ID field
-		id := val.FieldByName(resultStructIDFieldName).String()
+		id := recordAsMap["_id"]
 		cursorData = append(cursorData, bson.DocElem{Name: "_id", Value: id})
 	}
 	// Encode the cursor data into a url safe string
