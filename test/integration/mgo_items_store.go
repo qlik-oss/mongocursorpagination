@@ -86,7 +86,6 @@ func (m *mgoStore) EnsureIndices() error {
 	return err
 }
 
-// EnsureIndices creates indices and returns any error
 func (m *mgoStore) RemoveAll() error {
 	_, err := m.col.RemoveAll(bson.M{})
 	return err

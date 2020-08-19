@@ -51,30 +51,18 @@ func (m *mongoStore) Create(ctx context.Context, c *MongoItem) (*MongoItem, erro
 
 // Find returns paginated items from the database matching the provided query
 func (m *mongoStore) Find(ctx context.Context, query interface{}, next string, previous string, limit int64, sortAscending bool, paginatedField string, collation *options.Collation) ([]*MongoItem, mongocursorpagination.Cursor, error) {
-	bsonQuery := query.(bson.M)
-	fp := mongocursorpagination.FindParams{
-		Collection:     m.col,
-		Query:          bsonQuery,
-		Limit:          limit,
-		SortAscending:  sortAscending,
-		PaginatedField: paginatedField,
-		Collation:      collation,
-		Next:           next,
-		Previous:       previous,
-		CountTotal:     true,
-	}
 	var items []*MongoItem
-	c, err := mongocursorpagination.Find(ctx, fp, &items)
-	cursor := mongocursorpagination.Cursor{
-		Previous:    c.Previous,
-		Next:        c.Next,
-		HasPrevious: c.HasPrevious,
-		HasNext:     c.HasNext,
-	}
+	cursor, err := m.mongoFind(ctx, query, next, previous, limit, sortAscending, paginatedField, collation, &items)
 	return items, cursor, err
 }
 
 func (m *mongoStore) FindBSONRaw(ctx context.Context, query interface{}, next string, previous string, limit int64, sortAscending bool, paginatedField string, collation *options.Collation) ([]bson.Raw, mongocursorpagination.Cursor, error) {
+	var items []bson.Raw
+	cursor, err := m.mongoFind(ctx, query, next, previous, limit, sortAscending, paginatedField, collation, &items)
+	return items, cursor, err
+}
+
+func (m *mongoStore) mongoFind(ctx context.Context, query interface{}, next string, previous string, limit int64, sortAscending bool, paginatedField string, collation *options.Collation, results interface{}) (mongocursorpagination.Cursor, error) {
 	bsonQuery := query.(bson.M)
 	fp := mongocursorpagination.FindParams{
 		Collection:     m.col,
@@ -87,15 +75,14 @@ func (m *mongoStore) FindBSONRaw(ctx context.Context, query interface{}, next st
 		Previous:       previous,
 		CountTotal:     true,
 	}
-	var items []bson.Raw
-	c, err := mongocursorpagination.Find(ctx, fp, &items)
+	c, err := mongocursorpagination.Find(ctx, fp, results)
 	cursor := mongocursorpagination.Cursor{
 		Previous:    c.Previous,
 		Next:        c.Next,
 		HasPrevious: c.HasPrevious,
 		HasNext:     c.HasNext,
 	}
-	return items, cursor, err
+	return cursor, err
 }
 
 func (m *mongoStore) RemoveAll(ctx context.Context) error {
