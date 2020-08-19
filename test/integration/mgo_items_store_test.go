@@ -79,4 +79,8 @@ func TestCollectionsFindManyPagination(t *testing.T) {
 	require.False(t, cursor.HasPrevious)
 	require.Equal(t, item1.ID, foundItems[0].ID)
 	require.Equal(t, item2.ID, foundItems[1].ID)
+
+	// Cleanup
+	err = store.RemoveAll()
+	require.NoError(t, err)
 }

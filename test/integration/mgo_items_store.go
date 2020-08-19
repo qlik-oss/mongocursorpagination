@@ -19,6 +19,7 @@ type (
 	// Store allows operations on items.
 	Store interface {
 		Create(i *Item) (*Item, error)
+		RemoveAll() error
 		Find(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]*Item, mongocursorpagination.Cursor, error)
 		EnsureIndices() error
 	}
@@ -82,5 +83,11 @@ func (m *mgoStore) EnsureIndices() error {
 		},
 		Background: true,
 	})
+	return err
+}
+
+// EnsureIndices creates indices and returns any error
+func (m *mgoStore) RemoveAll() error {
+	_, err := m.col.RemoveAll(bson.M{})
 	return err
 }
