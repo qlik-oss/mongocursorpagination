@@ -1,4 +1,4 @@
-package mgointegration
+package integration
 
 import (
 	"time"

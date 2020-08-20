@@ -1,4 +1,4 @@
-package mgointegration
+package integration
 
 import (
 	"os"
@@ -85,7 +85,7 @@ func TestCollectionsFindManyPagination(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestMongoPaginationBSONRaw(t *testing.T) {
+func TestMgoPaginationBSONRaw(t *testing.T) {
 	store := newStore(t)
 	searchQuery := bson.M{"name": bson.RegEx{Pattern: "test item.*", Options: "i"}}
 	englishCollation := mgo.Collation{Locale: "en", Strength: 3}

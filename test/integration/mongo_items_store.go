@@ -1,4 +1,4 @@
-package mongointegration
+package integration
 
 import (
 	"context"
