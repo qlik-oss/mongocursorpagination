@@ -1,4 +1,4 @@
-package integration
+package mgointegration
 
 import (
 	"os"
@@ -79,6 +79,36 @@ func TestCollectionsFindManyPagination(t *testing.T) {
 	require.False(t, cursor.HasPrevious)
 	require.Equal(t, item1.ID, foundItems[0].ID)
 	require.Equal(t, item2.ID, foundItems[1].ID)
+
+	// Cleanup
+	err = store.RemoveAll()
+	require.NoError(t, err)
+}
+
+func TestMongoPaginationBSONRaw(t *testing.T) {
+	store := newStore(t)
+	searchQuery := bson.M{"name": bson.RegEx{Pattern: "test item.*", Options: "i"}}
+	englishCollation := mgo.Collation{Locale: "en", Strength: 3}
+
+	item1 := createItem(t, store, "test item 1")
+	item2 := createItem(t, store, "test item 2")
+	createItem(t, store, "test item 3")
+	createItem(t, store, "test item 4")
+
+	foundItems, cursor, err := store.FindBSONRaw(searchQuery, "", "", 2, true, "name", englishCollation)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+
+	var result0 Item
+	var result1 Item
+	err = foundItems[0].Unmarshal(&result0)
+	require.NoError(t, err)
+	err = foundItems[1].Unmarshal(&result1)
+	require.NoError(t, err)
+	require.Equal(t, item1.ID, result0.ID)
+	require.Equal(t, item2.ID, result1.ID)
 
 	// Cleanup
 	err = store.RemoveAll()

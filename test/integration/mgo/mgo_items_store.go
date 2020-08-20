@@ -1,4 +1,4 @@
-package integration
+package mgointegration
 
 import (
 	"time"
@@ -21,6 +21,7 @@ type (
 		Create(i *Item) (*Item, error)
 		RemoveAll() error
 		Find(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]*Item, mongocursorpagination.Cursor, error)
+		FindBSONRaw(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]bson.Raw, mongocursorpagination.Cursor, error)
 		EnsureIndices() error
 	}
 
@@ -59,6 +60,31 @@ func (m *mgoStore) Find(query interface{}, next string, previous string, limit i
 		CountTotal:     true,
 	}
 	var items []*Item
+	c, err := mongocursorpagination.Find(fp, &items)
+	cursor := mongocursorpagination.Cursor{
+		Previous:    c.Previous,
+		Next:        c.Next,
+		HasPrevious: c.HasPrevious,
+		HasNext:     c.HasNext,
+	}
+	return items, cursor, err
+}
+
+func (m *mgoStore) FindBSONRaw(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]bson.Raw, mongocursorpagination.Cursor, error) {
+	var items []bson.Raw
+	bsonQuery := query.(bson.M)
+	fp := mongocursorpagination.FindParams{
+		DB:             m.col.Database,
+		CollectionName: m.col.Name,
+		Query:          bsonQuery,
+		Limit:          limit,
+		SortAscending:  sortAscending,
+		PaginatedField: paginatedField,
+		Collation:      &collation,
+		Next:           next,
+		Previous:       previous,
+		CountTotal:     true,
+	}
 	c, err := mongocursorpagination.Find(fp, &items)
 	cursor := mongocursorpagination.Cursor{
 		Previous:    c.Previous,
