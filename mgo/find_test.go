@@ -302,9 +302,9 @@ func TestParseCursor(t *testing.T) {
 	}{
 		{
 			"return appropriate cursor field values when shouldSecondarySortOnID is true",
-			"LwAAAAJuYW1lAAoAAAB0ZXN0IGl0ZW0AAl9pZAANAAAAWt31M-gVSd52lssEAAA",
+			"KgAAAAJuYW1lAAoAAAB0ZXN0IGl0ZW0AB19pZABa3fUz6BVJ3naWywQA",
 			true,
-			[]interface{}{"test item", "Z\xdd\xf53\xe8\x15I\xdev\x96\xcb\x04"},
+			[]interface{}{"test item", bson.ObjectIdHex("5addf533e81549de7696cb04")},
 			nil,
 		},
 		{
@@ -405,7 +405,7 @@ func TestGenerateCursor(t *testing.T) {
 			"_id",
 			false,
 			"",
-			errors.New("failed to encode cursor using [{_id ObjectIdHex(\"313233\")}]: ObjectIDs must be exactly 12 bytes long (got 3)"),
+			errors.New("ObjectIDs must be exactly 12 bytes long (got 3)"),
 		},
 		{
 			"errors when result is nil",
@@ -417,7 +417,7 @@ func TestGenerateCursor(t *testing.T) {
 		},
 		{
 			"errors when paginated field not found",
-			item{},
+			item{ID: bson.ObjectIdHex("5addf533e81549de7696cb04")},
 			"creatorId",
 			false,
 			"",
