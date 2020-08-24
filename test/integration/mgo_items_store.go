@@ -19,7 +19,9 @@ type (
 	// Store allows operations on items.
 	Store interface {
 		Create(i *Item) (*Item, error)
+		RemoveAll() error
 		Find(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]*Item, mongocursorpagination.Cursor, error)
+		FindBSONRaw(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]bson.Raw, mongocursorpagination.Cursor, error)
 		EnsureIndices() error
 	}
 
@@ -44,6 +46,18 @@ func (m *mgoStore) Create(c *Item) (*Item, error) {
 
 // Find returns paginated items from the database matching the provided query
 func (m *mgoStore) Find(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]*Item, mongocursorpagination.Cursor, error) {
+	var items []*Item
+	cursor, err := m.find(query, next, previous, limit, sortAscending, paginatedField, collation, &items)
+	return items, cursor, err
+}
+
+func (m *mgoStore) FindBSONRaw(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation) ([]bson.Raw, mongocursorpagination.Cursor, error) {
+	var items []bson.Raw
+	cursor, err := m.find(query, next, previous, limit, sortAscending, paginatedField, collation, &items)
+	return items, cursor, err
+}
+
+func (m *mgoStore) find(query interface{}, next string, previous string, limit int, sortAscending bool, paginatedField string, collation mgo.Collation, results interface{}) (mongocursorpagination.Cursor, error) {
 	bsonQuery := query.(bson.M)
 	fp := mongocursorpagination.FindParams{
 		DB:             m.col.Database,
@@ -57,15 +71,14 @@ func (m *mgoStore) Find(query interface{}, next string, previous string, limit i
 		Previous:       previous,
 		CountTotal:     true,
 	}
-	var items []*Item
-	c, err := mongocursorpagination.Find(fp, &items)
+	c, err := mongocursorpagination.Find(fp, results)
 	cursor := mongocursorpagination.Cursor{
 		Previous:    c.Previous,
 		Next:        c.Next,
 		HasPrevious: c.HasPrevious,
 		HasNext:     c.HasNext,
 	}
-	return items, cursor, err
+	return cursor, err
 }
 
 // EnsureIndices creates indices and returns any error
@@ -82,5 +95,10 @@ func (m *mgoStore) EnsureIndices() error {
 		},
 		Background: true,
 	})
+	return err
+}
+
+func (m *mgoStore) RemoveAll() error {
+	_, err := m.col.RemoveAll(bson.M{})
 	return err
 }

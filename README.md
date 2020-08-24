@@ -93,7 +93,7 @@ from the second page, we can get to first page:
 foundItems, cursor, err = store.Find(searchQuery, "", cursor.Previous, 2, true, "name", englishCollation)
 ```
 
-See [items_store_test.go](./test/integration/items_store_test.go) for the integration test that uses the [items store](./test/integration/items_store.go)'s find method.
+See [items_store_test.go](./test/integration/mgo_items_store_test.go) for the integration test that uses the [items store](./test/integration/mgo_items_store.go)'s find method.
 
 ### mongo-go-driver
 
