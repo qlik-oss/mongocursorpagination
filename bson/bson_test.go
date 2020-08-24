@@ -3,18 +3,9 @@ package bson
 import (
 	"errors"
 	"testing"
-	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/require"
 )
-
-type item struct {
-	ID        bson.ObjectId `json:"id" bson:"_id"`
-	Name      string        `json:"name" bson:"name"`
-	UserID    string        `json:"userId" bson:"userId,omitempty"`
-	CreatedAt time.Time     `json:"createdAt" bson:"createdAt"`
-}
 
 func TestGenerateCursorQuery(t *testing.T) {
 	var cases = []struct {
