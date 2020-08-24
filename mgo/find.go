@@ -282,8 +282,8 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 	var err error
 
 	switch v := result.(type) {
-	case []byte:
-		recordAsBytes = v
+	case bson.Raw:
+		recordAsBytes = v.Data
 	default:
 		recordAsBytes, err = bson.Marshal(result)
 		if err != nil {
@@ -297,6 +297,9 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 		return "", err
 	}
 	paginatedFieldValue := recordAsMap[paginatedField]
+	if paginatedFieldValue == nil {
+		return "", fmt.Errorf("paginated field %s not found", paginatedField)
+	}
 	// Set the cursor data
 	cursorData := make(bson.D, 0, 2)
 	cursorData = append(cursorData, bson.DocElem{Name: paginatedField, Value: paginatedFieldValue})
@@ -314,7 +317,7 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 }
 
 // encodeCursor encodes and returns cursor data that is url safe
-func encodeCursor(cursorData bson.D) (string, error) {
+var encodeCursor = func(cursorData bson.D) (string, error) {
 	data, err := bson.Marshal(cursorData)
 	return base64.RawURLEncoding.EncodeToString(data), err
 }

@@ -2,7 +2,6 @@ package bson
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 	"time"
 
@@ -75,52 +74,6 @@ func TestGenerateCursorQuery(t *testing.T) {
 			query, err := GenerateCursorQuery(tc.shouldSecondarySortOnID, tc.paginatedField, tc.comparisonOp, tc.cursorFieldValues)
 			require.Equal(t, tc.expectedQuery, query)
 			require.Equal(t, tc.expectedErr, err)
-		})
-	}
-}
-
-func TestFindStructFieldNameByBsonTag(t *testing.T) {
-	var cases = []struct {
-		name                    string
-		structType              reflect.Type
-		tag                     string
-		expectedStructFieldName string
-	}{
-		{
-			"return struct field name when matching bson tag specified",
-			reflect.TypeOf(item{}),
-			"name",
-			"Name",
-		},
-		{
-			"return struct field name when tag has additional flags",
-			reflect.TypeOf(item{}),
-			"userId",
-			"UserID",
-		},
-		{
-			"return empty struct field name when a non matching bson tag specified",
-			reflect.TypeOf(item{}),
-			"notastructfield",
-			"",
-		},
-		{
-			"return empty struct field name when tag is empty",
-			reflect.TypeOf(item{}),
-			"",
-			"",
-		},
-		{
-			"return empty struct field name when structType is nil",
-			nil,
-			"name",
-			"",
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			structFieldName := FindStructFieldNameByBsonTag(tc.structType, tc.tag)
-			require.Equal(t, tc.expectedStructFieldName, structFieldName)
 		})
 	}
 }

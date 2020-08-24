@@ -141,23 +141,23 @@ func TestFind(t *testing.T) {
 			},
 			results: &[]*item{},
 			executeCountQuery: func(db *mgo.Database, collectionName string, queries []bson.M) (int, error) {
-				return 2, nil
+				return 3, nil
 			},
 			executeCursorQuery: func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 				resultv := reflect.ValueOf(results)
 				resultv.Elem().Set(reflect.ValueOf([]*item{
-					&item{ID: "111", Name: "test item 1", CreatedAt: time.Now()},
-					&item{ID: "222", Name: "test item 2", CreatedAt: time.Now()},
-					&item{ID: "333", Name: "test item 3", CreatedAt: time.Now()},
+					&item{ID: bson.ObjectIdHex("1addf533e81549de7696cb04"), Name: "test item 1", CreatedAt: time.Now()},
+					&item{ID: bson.ObjectIdHex("2addf533e81549de7696cb04"), Name: "test item 2", CreatedAt: time.Now()},
+					&item{ID: bson.ObjectIdHex("3addf533e81549de7696cb04"), Name: "test item 3", CreatedAt: time.Now()},
 				}))
 				return nil
 			},
 			expectedCursor: Cursor{
 				Previous:    "",
-				Next:        "KAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMgACX2lkAAQAAAAyMjIAAA",
+				Next:        "LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMgAHX2lkACrd9TPoFUnedpbLBAA",
 				HasPrevious: false,
 				HasNext:     true,
-				Count:       2,
+				Count:       3,
 			},
 			expectedErr: nil,
 		},
@@ -170,7 +170,7 @@ func TestFind(t *testing.T) {
 				SortAscending:  true,
 				PaginatedField: "name",
 				Limit:          2,
-				Next:           "KAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMgACX2lkAAQAAAAyMjIAAA",
+				Next:           "LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMgAHX2lkACrd9TPoFUnedpbLBAA",
 				CountTotal:     true,
 			},
 			results: &[]item{},
@@ -180,13 +180,13 @@ func TestFind(t *testing.T) {
 			executeCursorQuery: func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 				resultv := reflect.ValueOf(results)
 				resultv.Elem().Set(reflect.ValueOf([]item{
-					{ID: "111", Name: "test item 1", CreatedAt: time.Now()},
-					{ID: "222", Name: "test item 2", CreatedAt: time.Now()},
+					{ID: bson.ObjectIdHex("1addf533e81549de7696cb04"), Name: "test item 1", CreatedAt: time.Now()},
+					{ID: bson.ObjectIdHex("2addf533e81549de7696cb04"), Name: "test item 2", CreatedAt: time.Now()},
 				}))
 				return nil
 			},
 			expectedCursor: Cursor{
-				Previous:    "KAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMQACX2lkAAQAAAAxMTEAAA",
+				Previous:    "LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMQAHX2lkABrd9TPoFUnedpbLBAA",
 				Next:        "",
 				HasPrevious: true,
 				HasNext:     false,
@@ -203,7 +203,7 @@ func TestFind(t *testing.T) {
 				SortAscending:  true,
 				PaginatedField: "name",
 				Limit:          2,
-				Previous:       "KAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMQACX2lkAAQAAAAxMTEAAA",
+				Previous:       "LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMQAHX2lkABrd9TPoFUnedpbLBAA",
 				CountTotal:     true,
 			},
 			results: &[]item{},
@@ -213,14 +213,14 @@ func TestFind(t *testing.T) {
 			executeCursorQuery: func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 				resultv := reflect.ValueOf(results)
 				resultv.Elem().Set(reflect.ValueOf([]item{
-					{ID: "111", Name: "test item 1", CreatedAt: time.Now()},
-					{ID: "222", Name: "test item 2", CreatedAt: time.Now()},
+					{ID: bson.ObjectIdHex("1addf533e81549de7696cb04"), Name: "test item 1", CreatedAt: time.Now()},
+					{ID: bson.ObjectIdHex("2addf533e81549de7696cb04"), Name: "test item 2", CreatedAt: time.Now()},
 				}))
 				return nil
 			},
 			expectedCursor: Cursor{
 				Previous:    "",
-				Next:        "KAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMQACX2lkAAQAAAAxMTEAAA",
+				Next:        "LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMQAHX2lkABrd9TPoFUnedpbLBAA",
 				HasPrevious: false,
 				HasNext:     true,
 				Count:       2,
@@ -274,7 +274,9 @@ func TestFind(t *testing.T) {
 
 			cursor, err := Find(tc.findParams, tc.results)
 
-			if tc.results != nil && tc.expectedErr == nil {
+			require.Equal(t, tc.expectedErr, err)
+			if tc.expectedErr == nil {
+				require.NotNil(t, tc.results)
 				// Handle different slice types ([]item and []*item)
 				v := reflect.ValueOf(tc.results)
 				if v.Kind() == reflect.Ptr {
@@ -282,12 +284,9 @@ func TestFind(t *testing.T) {
 				}
 				length := v.Len()
 				require.Equal(t, tc.findParams.Limit, length)
-				if tc.findParams.CountTotal == true {
-					require.Equal(t, cursor.Count, length)
-				}
+				require.Equal(t, tc.expectedCursor.Count, cursor.Count)
 			}
 			require.Equal(t, tc.expectedCursor, cursor)
-			require.Equal(t, tc.expectedErr, err)
 		})
 	}
 }
@@ -302,9 +301,9 @@ func TestParseCursor(t *testing.T) {
 	}{
 		{
 			"return appropriate cursor field values when shouldSecondarySortOnID is true",
-			"KgAAAAJuYW1lAAoAAAB0ZXN0IGl0ZW0AB19pZABa3fUz6BVJ3naWywQA",
+			"LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMQAHX2lkABrd9TPoFUnedpbLBAA",
 			true,
-			[]interface{}{"test item", bson.ObjectIdHex("5addf533e81549de7696cb04")},
+			[]interface{}{"test item 1", bson.ObjectIdHex("1addf533e81549de7696cb04")},
 			nil,
 		},
 		{
@@ -380,6 +379,7 @@ func TestGenerateCursor(t *testing.T) {
 		result                  interface{}
 		paginatedField          string
 		shouldSecondarySortOnID bool
+		encodeCursor            func(cursorData bson.D) (string, error)
 		expectedCursor          string
 		expectedErr             error
 	}{
@@ -388,15 +388,17 @@ func TestGenerateCursor(t *testing.T) {
 			item{ID: bson.ObjectIdHex("5addf533e81549de7696cb04"), Name: "test item", CreatedAt: time.Now()},
 			"_id",
 			false,
+			nil,
 			"FgAAAAdfaWQAWt31M-gVSd52lssEAA",
 			nil,
 		},
 		{
 			"return the generated cursor for an item search paginated by name",
-			item{ID: bson.ObjectIdHex("5addf533e81549de7696cb04"), Name: "test item", CreatedAt: time.Now()},
+			item{ID: bson.ObjectIdHex("1addf533e81549de7696cb04"), Name: "test item 1", CreatedAt: time.Now()},
 			"name",
 			true,
-			"LwAAAAJuYW1lAAoAAAB0ZXN0IGl0ZW0AAl9pZAANAAAAWt31M-gVSd52lssEAAA",
+			nil,
+			"LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMQAHX2lkABrd9TPoFUnedpbLBAA",
 			nil,
 		},
 		{
@@ -404,6 +406,7 @@ func TestGenerateCursor(t *testing.T) {
 			item{ID: "123", Name: "test item", CreatedAt: time.Now()},
 			"_id",
 			false,
+			nil,
 			"",
 			errors.New("ObjectIDs must be exactly 12 bytes long (got 3)"),
 		},
@@ -412,20 +415,41 @@ func TestGenerateCursor(t *testing.T) {
 			nil,
 			"_id",
 			false,
+			nil,
 			"",
 			errors.New("the specified result must be a non nil value"),
 		},
 		{
-			"errors when paginated field not found",
-			item{ID: bson.ObjectIdHex("5addf533e81549de7696cb04")},
+			"errors when paginated field not found and result is bson.Raw",
+			&[]bson.Raw{},
 			"creatorId",
 			false,
+			nil,
 			"",
 			errors.New("paginated field creatorId not found"),
+		},
+		{
+			"errors when encoding fails",
+			item{ID: bson.ObjectIdHex("1addf533e81549de7696cb04"), Name: "test item", CreatedAt: time.Now()},
+			"name",
+			false,
+			func(cursorData bson.D) (string, error) {
+				return "", errors.New("error")
+			},
+			"",
+			errors.New("failed to encode cursor using [{name test item}]: error"),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.encodeCursor != nil {
+				encodeCursorOri := encodeCursor
+				encodeCursor = tc.encodeCursor
+				defer func() {
+					encodeCursor = encodeCursorOri
+				}()
+			}
+
 			cursor, err := generateCursor(tc.result, tc.paginatedField, tc.shouldSecondarySortOnID)
 			require.Equal(t, tc.expectedCursor, cursor)
 			require.Equal(t, tc.expectedErr, err)
