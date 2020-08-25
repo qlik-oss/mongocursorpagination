@@ -26,11 +26,31 @@ type (
 	}
 
 	mongoStore struct {
-		col *mongo.Collection
+		col *mongoCollectionWrapper
+	}
+
+	mongoCollectionWrapper struct {
+		collection *mongo.Collection
 	}
 )
 
-func NewMongoStore(col *mongo.Collection) MongoStore {
+func (c *mongoCollectionWrapper) Find(ctx context.Context, filter interface{}, opts ...*options.FindOptions) (mongocursorpagination.MongoCursor, error) {
+	return c.collection.Find(ctx, filter, opts...)
+}
+
+func (c *mongoCollectionWrapper) InsertOne(ctx context.Context, document interface{}, opts ...*options.InsertOneOptions) (*mongo.InsertOneResult, error) {
+	return c.collection.InsertOne(ctx, document, opts...)
+}
+
+func (c *mongoCollectionWrapper) CountDocuments(ctx context.Context, filter interface{}, opts ...*options.CountOptions) (int64, error) {
+	return c.collection.CountDocuments(ctx, filter, opts...)
+}
+
+func (c *mongoCollectionWrapper) DeleteMany(ctx context.Context, filter interface{}, opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
+	return c.collection.DeleteMany(ctx, filter, opts...)
+}
+
+func NewMongoStore(col *mongoCollectionWrapper) MongoStore {
 	return &mongoStore{
 		col: col,
 	}

@@ -12,14 +12,16 @@ import (
 	mcpbson "github.com/qlik-oss/mongocursorpagination/bson"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type (
+	MongoCursor interface {
+		All(context.Context, interface{}) error
+	}
 	Collection interface {
 		CountDocuments(context.Context, interface{}, ...*options.CountOptions) (int64, error)
-		Find(context.Context, interface{}, ...*options.FindOptions) (*mongo.Cursor, error)
+		Find(context.Context, interface{}, ...*options.FindOptions) (MongoCursor, error)
 	}
 	// FindParams holds the parameters to be used in a paginated find mongo query that will return a
 	// Cursor.
