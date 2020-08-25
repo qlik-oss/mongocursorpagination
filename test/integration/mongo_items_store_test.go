@@ -23,9 +23,11 @@ func newMongoStore(t *testing.T) MongoStore {
 	defer cancel()
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoAddr))
 	require.NoError(t, err, "error connecting to mongo")
-	col := client.Database("test_db").Collection("items")
-
-	store := NewMongoStore(col)
+	// col := client.Database("test_db").Collection("items")
+	col := mongoCollectionWrapper{
+		collection: client.Database("test_db").Collection("items"),
+	}
+	store := NewMongoStore(&col)
 	require.NoError(t, err)
 	return store
 }

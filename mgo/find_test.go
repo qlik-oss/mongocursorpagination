@@ -157,7 +157,7 @@ func TestFind(t *testing.T) {
 				Next:        "LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMgAHX2lkACrd9TPoFUnedpbLBAA",
 				HasPrevious: false,
 				HasNext:     true,
-				Count:       3,
+				Count:       2,
 			},
 			expectedErr: nil,
 		},
