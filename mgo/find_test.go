@@ -141,7 +141,7 @@ func TestFind(t *testing.T) {
 			},
 			results: &[]*item{},
 			executeCountQuery: func(db MgoDb, collectionName string, queries []bson.M) (int, error) {
-				return 2, nil
+				return 3, nil
 			},
 			executeCursorQuery: func(db MgoDb, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 				resultv := reflect.ValueOf(results)
@@ -157,7 +157,7 @@ func TestFind(t *testing.T) {
 				Next:        "LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMgAHX2lkACrd9TPoFUnedpbLBAA",
 				HasPrevious: false,
 				HasNext:     true,
-				Count:       2,
+				Count:       3,
 			},
 			expectedErr: nil,
 		},
