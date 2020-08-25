@@ -14,11 +14,21 @@ import (
 )
 
 type (
+	MgoDb interface {
+		C(string) *mgo.Collection
+	}
+	MgoQuery interface {
+		All(result interface{}) error
+		Sort(fields ...string) MgoQuery
+		Limit(n int) MgoQuery
+		Count() (n int, err error)
+		Collation(*mgo.Collation) MgoQuery
+	}
 	// FindParams holds the parameters to be used in a paginated find mongo query that will return a
 	// Cursor.
 	FindParams struct {
 		// The mongo database to use
-		DB *mgo.Database
+		DB MgoDb
 		// The name of the mongo collection to query
 		CollectionName string
 		// The find query to augment with pagination
@@ -257,11 +267,11 @@ func decodeCursor(cursor string) (bson.D, error) {
 	return cursorData, err
 }
 
-var executeCountQuery = func(db *mgo.Database, collectionName string, queries []bson.M) (int, error) {
+var executeCountQuery = func(db MgoDb, collectionName string, queries []bson.M) (int, error) {
 	return db.C(collectionName).Find(bson.M{"$and": queries}).Count()
 }
 
-var executeCursorQuery = func(db *mgo.Database, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
+var executeCursorQuery = func(db MgoDb, collectionName string, query []bson.M, sort []string, limit int, collation *mgo.Collation, results interface{}) error {
 	if collation == nil {
 		return db.C(collectionName).Find(bson.M{"$and": query}).Sort(sort...).Limit(limit + 1).All(results)
 	}
