@@ -17,7 +17,14 @@ import (
 
 type (
 	MongoCursor interface {
+		Close(context.Context) error
+		Decode(interface{}) error
+		ID() int64
+		Next(context.Context) bool
+		TryNext(context.Context) bool
+		Err() error
 		All(context.Context, interface{}) error
+		RemainingBatchLength() int
 	}
 	Collection interface {
 		CountDocuments(context.Context, interface{}, ...*options.CountOptions) (int64, error)
