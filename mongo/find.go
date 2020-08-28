@@ -81,7 +81,15 @@ type (
 		// Total count of documents matching filter - only computed if CountTotal is True
 		Count int
 	}
+
+	CursorError struct {
+		err error
+	}
 )
+
+func (e *CursorError) Error() string {
+	return e.err.Error()
+}
 
 // Find executes a find mongo query by using the provided FindParams, fills the passed in result
 // slice pointer and returns a Cursor.
@@ -107,12 +115,12 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 
 	nextCursorValues, err := parseCursor(p.Next, shouldSecondarySortOnID)
 	if err != nil {
-		return Cursor{}, fmt.Errorf("next cursor parse failed: %s", err)
+		return Cursor{}, &CursorError{fmt.Errorf("next cursor parse failed: %s", err)}
 	}
 
 	previousCursorValues, err := parseCursor(p.Previous, shouldSecondarySortOnID)
 	if err != nil {
-		return Cursor{}, fmt.Errorf("previous cursor parse failed: %s", err)
+		return Cursor{}, &CursorError{fmt.Errorf("previous cursor parse failed: %s", err)}
 	}
 
 	// Figure out the sort direction and comparison operator that will be used in the augmented query
