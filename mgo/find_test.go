@@ -72,7 +72,7 @@ func TestFind(t *testing.T) {
 			executeCountQuery:  nil,
 			executeCursorQuery: nil,
 			expectedCursor:     Cursor{},
-			expectedErr:        errors.New("next cursor parse failed: illegal base64 data at input byte 12"),
+			expectedErr:        &CursorError{err: errors.New("next cursor parse failed: illegal base64 data at input byte 12")},
 		},
 		{
 			name: "errors when previous cursor is bad",
@@ -86,7 +86,7 @@ func TestFind(t *testing.T) {
 			executeCountQuery:  nil,
 			executeCursorQuery: nil,
 			expectedCursor:     Cursor{},
-			expectedErr:        errors.New("previous cursor parse failed: illegal base64 data at input byte 12"),
+			expectedErr:        &CursorError{err: errors.New("previous cursor parse failed: illegal base64 data at input byte 12")},
 		},
 		{
 			name: "errors when executeCountQuery errors",

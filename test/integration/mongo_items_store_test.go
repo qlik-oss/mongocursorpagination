@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
-
+	mongocursorpagination "github.com/qlik-oss/mongocursorpagination/mongo"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -90,6 +90,18 @@ func TestMongoFindManyPagination(t *testing.T) {
 	// Cleanup
 	err = store.RemoveAll(context.Background())
 	require.NoError(t, err)
+}
+
+func TestMongoFindCursorError(t *testing.T) {
+	store := newMongoStore(t)
+	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
+	englishCollation := options.Collation{Locale: "en", Strength: 3}
+	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "bad_cursor_string", "", 4, true, "name", &englishCollation)
+	require.Error(t, err)
+	require.IsType(t, &mongocursorpagination.CursorError{}, err)
+	require.Empty(t, foundItems)
+	require.False(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
 }
 
 func TestMongoPaginationBSONRaw(t *testing.T) {
