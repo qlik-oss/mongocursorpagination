@@ -7,6 +7,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	mgocursorpagination "github.com/qlik-oss/mongocursorpagination/mgo"
 	"github.com/stretchr/testify/require"
 )
 
@@ -83,6 +84,21 @@ func TestCollectionsFindManyPagination(t *testing.T) {
 	// Cleanup
 	err = store.RemoveAll()
 	require.NoError(t, err)
+}
+
+func TestCollectionsFindManyCursorError(t *testing.T) {
+	store := newStore(t)
+
+	searchQuery := bson.M{"name": bson.RegEx{Pattern: "test item.*", Options: "i"}}
+	englishCollation := mgo.Collation{Locale: "en", Strength: 3}
+
+	// Get empty array when no items created
+	foundItems, cursor, err := store.Find(searchQuery, "bad_cursor_string", "", 4, true, "name", englishCollation)
+	require.Error(t, err)
+	require.IsType(t, &mgocursorpagination.CursorError{}, err)
+	require.Empty(t, foundItems)
+	require.False(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
 }
 
 func TestMgoPaginationBSONRaw(t *testing.T) {
