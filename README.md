@@ -31,7 +31,8 @@ Where the items collection is indexed:
 mgo.Index{
     Name: "cover_find_by_name",
     Key: []string{
-        "name",
+		// _id is required in the index' key as we secondary sort on _id when the paginated field is not _id
+		Key:    []string{"name", "_id"},
     },
     Unique: false,
     Collation: &mgo.Collation{
