@@ -1,5 +1,3 @@
-// Package mongocursorpagination eases the computation of pagination information of a find mongo query
-// by augmenting the base query with cursor information and returning a cursor.
 package mongo
 
 import (
@@ -15,14 +13,13 @@ import (
 )
 
 type (
-
 	// FindParams holds the parameters to be used in a paginated find mongo query that will return a
 	// Cursor.
-	FindParams struct {
+	AggregateParams struct {
 		Collection Collection
 
 		// The find query to augment with pagination
-		Query primitive.M
+		Pipeline []primitive.M
 		// The number of results to fetch, should be > 0
 		Limit int64
 		// true, if the results should be sort ascending, false otherwise
@@ -55,7 +52,7 @@ type (
 
 // Find executes a find mongo query by using the provided FindParams, fills the passed in result
 // slice pointer and returns a Cursor.
-func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error) {
+func Aggregate(ctx context.Context, p AggregateParams, results interface{}) (Cursor, error) {
 	var err error
 	if results == nil {
 		return Cursor{}, errors.New("results can't be nil")
@@ -95,12 +92,12 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	}
 
 	// Augment the specified find query with cursor data
-	queries := []bson.M{p.Query}
+	queries := p.Pipeline
 
 	// Compute total count of documents matching filter - only computed if CountTotal is True
 	var count int
 	if p.CountTotal {
-		count, err = executeFindCountQuery(ctx, p.Collection, queries)
+		count, err = executeAggregateCountQuery(ctx, p.Collection, queries)
 		if err != nil {
 			return Cursor{}, err
 		}
@@ -119,19 +116,34 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 		if err != nil {
 			return Cursor{}, err
 		}
-		queries = append(queries, cursorQuery)
+
+		queries = append(queries, primitive.M{"$match": cursorQuery})
 	}
 
 	// Setup the sort query
-	var sort bson.D
+	var sort bson.M
 	if shouldSecondarySortOnID {
-		sort = bson.D{{Key: p.PaginatedField, Value: sortDir}}
+		sort = primitive.M{
+			"$sort": primitive.M{
+				p.PaginatedField: sortDir,
+				"_id":            sortDir,
+			},
+		}
 	} else {
-		sort = bson.D{{Key: "_id", Value: sortDir}}
+		sort = primitive.M{
+			"$sort": primitive.M{
+				"_id": sortDir,
+			},
+		}
 	}
+	queries = append(queries, sort)
+
+	limit := primitive.M{"$limit": p.Limit + 1}
+
+	queries = append(queries, limit)
 
 	// Execute the augmented query, get an additional element to see if there's another page
-	err = executeFindCursorQuery(ctx, p.Collection, queries, sort, p.Limit, p.Collation, results)
+	err = executeAggregateCursorQuery(ctx, p.Collection, queries, p.Collation, results)
 	if err != nil {
 		return Cursor{}, err
 	}
@@ -197,15 +209,14 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	return cursor, nil
 }
 
-func executeFindCursorQuery(ctx context.Context, c Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, results interface{}) error {
-	options := options.Find()
-	options.SetSort(sort)
-	options.SetLimit(limit + 1)
+func executeAggregateCursorQuery(ctx context.Context, c Collection, query []bson.M, collation *options.Collation, results interface{}) error {
+	options := options.Aggregate()
 
 	if collation != nil {
 		options.SetCollation(collation)
 	}
-	cursor, err := c.Find(ctx, bson.M{"$and": query}, options)
+	cursor, err := c.Aggregate(ctx, query, options)
+
 	if err != nil {
 		return err
 	}
@@ -217,8 +228,8 @@ func executeFindCursorQuery(ctx context.Context, c Collection, query []bson.M, s
 	return nil
 }
 
-var executeFindCountQuery = func(ctx context.Context, c Collection, queries []bson.M) (int, error) {
-	count, err := c.CountDocuments(ctx, bson.M{"$and": queries})
+var executeAggregateCountQuery = func(ctx context.Context, c Collection, pipeline []bson.M) (int, error) {
+	count, err := c.CountDocuments(ctx, pipeline)
 	if err != nil {
 		return 0, err
 	}

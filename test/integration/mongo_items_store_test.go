@@ -104,6 +104,67 @@ func TestMongoFindCursorError(t *testing.T) {
 	require.False(t, cursor.HasPrevious)
 }
 
+func TestMongoAggregatePagination(t *testing.T) {
+	store := newMongoStore(t)
+	pipeline := []primitive.M{{"$match": bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}}}
+	englishCollation := options.Collation{Locale: "en", Strength: 3}
+
+	//Get empty array when no items created
+	foundItems, cursor, err := store.Aggregate(context.Background(), pipeline, "", "", 4, true, "name", &englishCollation)
+	require.NoError(t, err)
+	require.Empty(t, foundItems)
+	require.False(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+
+	item4 := createMongoItem(t, store, "test item 4")
+	item1 := createMongoItem(t, store, "test item 1")
+	item3 := createMongoItem(t, store, "test item 3")
+	item2 := createMongoItem(t, store, "test item 2")
+
+	// Get first page of search for items
+	foundItems, cursor, err = store.Aggregate(context.Background(), pipeline, "", "", 2, true, "name", &englishCollation)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item1.ID, foundItems[0].ID)
+	require.Equal(t, item2.ID, foundItems[1].ID)
+
+	// Get 2nd page of search for items
+	foundItems, cursor, err = store.Aggregate(context.Background(), pipeline, cursor.Next, "", 2, true, "name", &englishCollation)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.False(t, cursor.HasNext)
+	require.True(t, cursor.HasPrevious)
+	require.Equal(t, item3.ID, foundItems[0].ID)
+	require.Equal(t, item4.ID, foundItems[1].ID)
+
+	// Get previous page of search for items
+	foundItems, cursor, err = store.Aggregate(context.Background(), pipeline, "", cursor.Previous, 2, true, "name", &englishCollation)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item1.ID, foundItems[0].ID)
+	require.Equal(t, item2.ID, foundItems[1].ID)
+
+	// Cleanup
+	err = store.RemoveAll(context.Background())
+	require.NoError(t, err)
+}
+
+func TestMongoAggregateCursorError(t *testing.T) {
+	store := newMongoStore(t)
+	pipeline := []bson.M{{"$match": primitive.Regex{Pattern: "test item.*", Options: "i"}}}
+	englishCollation := options.Collation{Locale: "en", Strength: 3}
+	foundItems, cursor, err := store.Aggregate(context.Background(), pipeline, "bad_cursor_string", "", 4, true, "name", &englishCollation)
+	require.Error(t, err)
+	require.IsType(t, &mongocursorpagination.CursorError{}, err)
+	require.Empty(t, foundItems)
+	require.False(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+}
+
 func TestMongoPaginationBSONRaw(t *testing.T) {
 	store := newMongoStore(t)
 	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
