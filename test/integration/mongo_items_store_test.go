@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/base64"
 	"os"
 	"testing"
 	"time"
@@ -15,6 +16,11 @@ import (
 )
 
 func newMongoStore(t *testing.T) MongoStore {
+	store := NewMongoStore(newMongoCollection(t))
+	return store
+}
+
+func newMongoCollection(t *testing.T) *mongoCollectionWrapper {
 	t.Helper()
 	mongoAddr := os.Getenv("MONGO_URI")
 	require.NotEmpty(t, mongoAddr, "MONGO_URI is required")
@@ -26,9 +32,8 @@ func newMongoStore(t *testing.T) MongoStore {
 	col := mongoCollectionWrapper{
 		collection: client.Database("test_db").Collection("items"),
 	}
-	store := NewMongoStore(&col)
 	require.NoError(t, err)
-	return store
+	return &col
 }
 
 func createMongoItem(t *testing.T, mongoStore MongoStore, name string) *MongoItem {
@@ -125,4 +130,95 @@ func TestMongoPaginationBSONRaw(t *testing.T) {
 	// Cleanup
 	err = store.RemoveAll(context.Background())
 	require.NoError(t, err)
+}
+
+func TestMongoBuildPaginatedQueries(t *testing.T) {
+	col := newMongoCollection(t)
+	englishCollation := options.Collation{Locale: "en", Strength: 3}
+	oid1, _ := primitive.ObjectIDFromHex("5addf533e81549de7696cb04")
+	query1 := bson.M{
+		"$or": []bson.M{
+			{"name": "foo"},
+			{"name": ""},
+		},
+	}
+	query2 := bson.M{
+		"$or": []map[string]interface{}{
+			{"name": map[string]interface{}{
+				"$gt": "foo",
+			}},
+			{
+				"$and": []map[string]interface{}{
+					{
+						"name": map[string]interface{}{
+							"$eq": "foo",
+						},
+					},
+					{
+						"_id": map[string]interface{}{
+							"$gt": oid1,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	testCases := []struct {
+		name          string
+		params        mongocursorpagination.FindParams
+		expectQueries []bson.M
+		expectSort    bson.D
+		expectError   error
+	}{
+		{
+			name: "Sort on name, first page",
+			params: mongocursorpagination.FindParams{
+				Collection:     col,
+				Query:          query1,
+				Limit:          int64(42),
+				SortAscending:  true,
+				PaginatedField: "name",
+				Collation:      &englishCollation,
+				Next:           "",
+				Previous:       "",
+				CountTotal:     false,
+			},
+			expectQueries: []bson.M{query1},
+			expectSort:    bson.D{primitive.E{Key: "name", Value: 1}, primitive.E{Key: "_id", Value: 1}},
+			expectError:   nil,
+		},
+		{
+			name: "Sort on name, second page",
+			params: mongocursorpagination.FindParams{
+				Collection:     col,
+				Query:          query1,
+				Limit:          int64(42),
+				SortAscending:  true,
+				PaginatedField: "name",
+				Collation:      &englishCollation,
+				Next:           encodeCursor(t, bson.D{bson.E{Key: "name", Value: "foo"}, bson.E{Key: "_id", Value: oid1}}),
+				Previous:       "",
+				CountTotal:     false,
+			},
+			expectQueries: []bson.M{query1, query2},
+			expectSort:    bson.D{bson.E{Key: "name", Value: 1}, bson.E{Key: "_id", Value: 1}},
+			expectError:   nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			queries, sort, err := mongocursorpagination.BuildQueries(context.TODO(), tc.params)
+			require.Equal(t, tc.expectError, err, "BuildQueries returned unexpected error")
+			require.Equal(t, tc.expectQueries, queries, "Expected queries did not match")
+			require.Equal(t, tc.expectSort, sort, "Expected sort did not match")
+		})
+	}
+}
+
+func encodeCursor(t *testing.T, cursorData bson.D) string {
+	data, err := bson.Marshal(cursorData)
+	require.NoError(t, err, "invalid cursorData given to encodeCursor")
+	return base64.RawURLEncoding.EncodeToString(data)
 }

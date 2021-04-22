@@ -91,14 +91,8 @@ func (e *CursorError) Error() string {
 	return e.err.Error()
 }
 
-// Find executes a find mongo query by using the provided FindParams, fills the passed in result
-// slice pointer and returns a Cursor.
-func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error) {
-	var err error
-	if results == nil {
-		return Cursor{}, errors.New("results can't be nil")
-	}
-
+// BuildQueries builds the queries without executing them
+func BuildQueries(ctx context.Context, p FindParams) (queries []bson.M, sort bson.D, err error) {
 	if p.PaginatedField == "" {
 		p.PaginatedField = "_id"
 		p.Collation = nil
@@ -106,21 +100,21 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	shouldSecondarySortOnID := p.PaginatedField != "_id"
 
 	if p.Collection == nil {
-		return Cursor{}, errors.New("Collection can't be nil")
+		return []bson.M{}, nil, errors.New("Collection can't be nil")
 	}
 
 	if p.Limit <= 0 {
-		return Cursor{}, errors.New("a limit of at least 1 is required")
+		return []bson.M{}, nil, errors.New("a limit of at least 1 is required")
 	}
 
 	nextCursorValues, err := parseCursor(p.Next, shouldSecondarySortOnID)
 	if err != nil {
-		return Cursor{}, &CursorError{fmt.Errorf("next cursor parse failed: %s", err)}
+		return []bson.M{}, nil, &CursorError{fmt.Errorf("next cursor parse failed: %s", err)}
 	}
 
 	previousCursorValues, err := parseCursor(p.Previous, shouldSecondarySortOnID)
 	if err != nil {
-		return Cursor{}, &CursorError{fmt.Errorf("previous cursor parse failed: %s", err)}
+		return []bson.M{}, nil, &CursorError{fmt.Errorf("previous cursor parse failed: %s", err)}
 	}
 
 	// Figure out the sort direction and comparison operator that will be used in the augmented query
@@ -133,16 +127,7 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	}
 
 	// Augment the specified find query with cursor data
-	queries := []bson.M{p.Query}
-
-	// Compute total count of documents matching filter - only computed if CountTotal is True
-	var count int
-	if p.CountTotal {
-		count, err = executeCountQuery(ctx, p.Collection, queries)
-		if err != nil {
-			return Cursor{}, err
-		}
-	}
+	queries = []bson.M{p.Query}
 
 	// Setup the pagination query
 	if p.Next != "" || p.Previous != "" {
@@ -155,18 +140,44 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 		var cursorQuery bson.M
 		cursorQuery, err = mcpbson.GenerateCursorQuery(shouldSecondarySortOnID, p.PaginatedField, comparisonOp, cursorValues)
 		if err != nil {
-			return Cursor{}, err
+			return []bson.M{}, nil, err
 		}
 		queries = append(queries, cursorQuery)
 	}
 
 	// Setup the sort query
-	var sort bson.D
 	if shouldSecondarySortOnID {
 		sort = bson.D{{Key: p.PaginatedField, Value: sortDir}, {Key: "_id", Value: sortDir}}
 	} else {
 		sort = bson.D{{Key: "_id", Value: sortDir}}
 	}
+
+	return queries, sort, nil
+}
+
+// Find executes a find mongo query by using the provided FindParams, fills the passed in result
+// slice pointer and returns a Cursor.
+func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error) {
+	var err error
+	if results == nil {
+		return Cursor{}, errors.New("results can't be nil")
+	}
+
+	// Compute total count of documents matching filter - only computed if CountTotal is True
+	var count int
+	if p.CountTotal {
+		count, err = executeCountQuery(ctx, p.Collection, []bson.M{p.Query})
+		if err != nil {
+			return Cursor{}, err
+		}
+	}
+
+	queries, sort, err := BuildQueries(ctx, p)
+	if err != nil {
+		return Cursor{}, err
+	}
+
+	shouldSecondarySortOnID := p.PaginatedField != "_id"
 
 	// Execute the augmented query, get an additional element to see if there's another page
 	err = executeCursorQuery(ctx, p.Collection, queries, sort, p.Limit, p.Collation, results)
