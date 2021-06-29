@@ -176,7 +176,11 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	if err != nil {
 		return Cursor{}, err
 	}
-
+	
+	if p.PaginatedField == "" {
+		p.PaginatedField = "_id"
+		p.Collation = nil
+	}
 	shouldSecondarySortOnID := p.PaginatedField != "_id"
 
 	// Execute the augmented query, get an additional element to see if there's another page
