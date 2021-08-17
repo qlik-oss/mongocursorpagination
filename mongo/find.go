@@ -64,6 +64,13 @@ type (
 		// Whether or not to include total count of documents matching filter in the cursor
 		// Specifying true makes an additional query
 		CountTotal bool
+		// The index to use for the operation. This should either be the index name as a string or the index specification
+		// as a document. The default value is nil, which means that no hint will be sent.
+		Hint interface{}
+		// A document describing which fields will be included in the documents returned by the operation. The default value
+		// is nil, which means all fields will be included.
+		// Example: bson.D{"_id":0, "name": 1}
+		Projection interface{}
 	}
 
 	// Cursor holds the pagination data about the find mongo query that was performed.
@@ -180,7 +187,7 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	shouldSecondarySortOnID := p.PaginatedField != "_id"
 
 	// Execute the augmented query, get an additional element to see if there's another page
-	err = executeCursorQuery(ctx, p.Collection, queries, sort, p.Limit, p.Collation, results)
+	err = executeCursorQuery(ctx, p.Collection, queries, sort, p.Limit, p.Collation, p.Hint, p.Projection, results)
 	if err != nil {
 		return Cursor{}, err
 	}
@@ -292,13 +299,19 @@ var executeCountQuery = func(ctx context.Context, c Collection, queries []bson.M
 	return int(count), nil
 }
 
-func executeCursorQuery(ctx context.Context, c Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, results interface{}) error {
+func executeCursorQuery(ctx context.Context, c Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, hint interface{}, projection interface{}, results interface{}) error {
 	options := options.Find()
 	options.SetSort(sort)
 	options.SetLimit(limit + 1)
 
 	if collation != nil {
 		options.SetCollation(collation)
+	}
+	if hint != nil {
+		options.SetHint(hint)
+	}
+	if projection != nil {
+		options.SetProjection(projection)
 	}
 	cursor, err := c.Find(ctx, bson.M{"$and": query}, options)
 	if err != nil {

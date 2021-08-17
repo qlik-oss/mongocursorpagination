@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -32,7 +33,6 @@ func newMongoCollection(t *testing.T) *mongoCollectionWrapper {
 	col := mongoCollectionWrapper{
 		collection: client.Database("test_db").Collection("items"),
 	}
-	require.NoError(t, err)
 	return &col
 }
 
@@ -54,7 +54,7 @@ func TestMongoFindManyPagination(t *testing.T) {
 	englishCollation := options.Collation{Locale: "en", Strength: 3}
 
 	// Get empty array when no items created
-	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "", "", 4, true, "name", &englishCollation)
+	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "", "", 4, true, "name", &englishCollation, nil, nil)
 	require.NoError(t, err)
 	require.Empty(t, foundItems)
 	require.False(t, cursor.HasNext)
@@ -66,7 +66,7 @@ func TestMongoFindManyPagination(t *testing.T) {
 	item2 := createMongoItem(t, store, "test item 2")
 
 	// Get first page of search for items
-	foundItems, cursor, err = store.Find(context.Background(), searchQuery, "", "", 2, true, "name", &englishCollation)
+	foundItems, cursor, err = store.Find(context.Background(), searchQuery, "", "", 2, true, "name", &englishCollation, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(foundItems))
 	require.True(t, cursor.HasNext)
@@ -75,7 +75,7 @@ func TestMongoFindManyPagination(t *testing.T) {
 	require.Equal(t, item2.ID, foundItems[1].ID)
 
 	// Get 2nd page of search for items
-	foundItems, cursor, err = store.Find(context.Background(), searchQuery, cursor.Next, "", 2, true, "name", &englishCollation)
+	foundItems, cursor, err = store.Find(context.Background(), searchQuery, cursor.Next, "", 2, true, "name", &englishCollation, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(foundItems))
 	require.False(t, cursor.HasNext)
@@ -84,7 +84,7 @@ func TestMongoFindManyPagination(t *testing.T) {
 	require.Equal(t, item4.ID, foundItems[1].ID)
 
 	// Get previous page of search for items
-	foundItems, cursor, err = store.Find(context.Background(), searchQuery, "", cursor.Previous, 2, true, "name", &englishCollation)
+	foundItems, cursor, err = store.Find(context.Background(), searchQuery, "", cursor.Previous, 2, true, "name", &englishCollation, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(foundItems))
 	require.True(t, cursor.HasNext)
@@ -101,7 +101,7 @@ func TestMongoFindCursorError(t *testing.T) {
 	store := newMongoStore(t)
 	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
 	englishCollation := options.Collation{Locale: "en", Strength: 3}
-	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "bad_cursor_string", "", 4, true, "name", &englishCollation)
+	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "bad_cursor_string", "", 4, true, "name", &englishCollation, nil, nil)
 	require.Error(t, err)
 	require.IsType(t, &mongocursorpagination.CursorError{}, err)
 	require.Empty(t, foundItems)
@@ -119,7 +119,7 @@ func TestMongoPaginationBSONRaw(t *testing.T) {
 	createMongoItem(t, store, "test item 3")
 	createMongoItem(t, store, "test item 4")
 
-	foundItems, cursor, err := store.FindBSONRaw(context.Background(), searchQuery, "", "", 2, true, "name", &englishCollation)
+	foundItems, cursor, err := store.FindBSONRaw(context.Background(), searchQuery, "", "", 2, true, "name", &englishCollation, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(foundItems))
 	require.True(t, cursor.HasNext)
@@ -215,6 +215,54 @@ func TestMongoBuildPaginatedQueries(t *testing.T) {
 			require.Equal(t, tc.expectSort, sort, "Expected sort did not match")
 		})
 	}
+}
+
+func TestMongoProjection(t *testing.T) {
+	store := newMongoStore(t)
+
+	_ = createMongoItem(t, store, "test item 0")
+	_ = createMongoItem(t, store, "test item 1")
+
+	searchQuery := bson.M{}
+	projection := bson.D{
+		{Key: "_id", Value: 0}, // Do not return ID
+		{Key: "name", Value: 1},
+	}
+
+	foundItems, _, err := store.FindBSONRaw(context.Background(), searchQuery, "", "", 2, true, "name", nil, nil, projection)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.Equal(t, `{"name": "test item 0"}`, foundItems[0].String())
+	require.Equal(t, `{"name": "test item 1"}`, foundItems[1].String())
+
+	// Cleanup
+	err = store.RemoveAll(context.Background())
+	require.NoError(t, err)
+}
+
+func TestMongoHint(t *testing.T) {
+	store := newMongoStore(t)
+	searchQuery := bson.M{}
+
+	for _, c := range "abcdefghij" {
+		_ = createMongoItem(t, store, string(c))
+	}
+
+	_, _, err := store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, "indexName_id", nil)
+	require.True(t, errors.As(err, &mongo.CommandError{}), "non existing index by name should result in a command error")
+
+	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, bson.D{{Key: "created", Value: 1}}, nil)
+	require.True(t, errors.As(err, &mongo.CommandError{}), "non existing index by specification document should result in a command error")
+
+	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, "_id_", nil)
+	require.NoError(t, err, "hinting the default _id index by name should succeed")
+
+	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, bson.D{{Key: "_id", Value: 1}}, nil)
+	require.NoError(t, err, "hinting the default _id index by specification document should succeed")
+
+	// Cleanup
+	err = store.RemoveAll(context.Background())
+	require.NoError(t, err)
 }
 
 func encodeCursor(t *testing.T, cursorData bson.D) string {
