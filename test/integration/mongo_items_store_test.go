@@ -244,7 +244,7 @@ func TestMongoHint(t *testing.T) {
 	store := newMongoStore(t)
 	searchQuery := bson.M{}
 
-	for _, c := range "abcdefghij" {
+	for _, c := range "abcdefg" {
 		_ = createMongoItem(t, store, string(c))
 	}
 
