@@ -100,10 +100,7 @@ func (e *CursorError) Error() string {
 
 // BuildQueries builds the queries without executing them
 func BuildQueries(ctx context.Context, p FindParams) (queries []bson.M, sort bson.D, err error) {
-	if p.PaginatedField == "" {
-		p.PaginatedField = "_id"
-		p.Collation = nil
-	}
+	p = ensureMandatoryParams(p)
 	shouldSecondarySortOnID := p.PaginatedField != "_id"
 
 	if p.Collection == nil {
@@ -169,6 +166,8 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	if results == nil {
 		return Cursor{}, errors.New("results can't be nil")
 	}
+	p = ensureMandatoryParams(p)
+	shouldSecondarySortOnID := p.PaginatedField != "_id"
 
 	// Compute total count of documents matching filter - only computed if CountTotal is True
 	var count int
@@ -183,8 +182,6 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	if err != nil {
 		return Cursor{}, err
 	}
-
-	shouldSecondarySortOnID := p.PaginatedField != "_id"
 
 	// Execute the augmented query, get an additional element to see if there's another page
 	err = executeCursorQuery(ctx, p.Collection, queries, sort, p.Limit, p.Collation, p.Hint, p.Projection, results)
@@ -251,6 +248,15 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	resultsPtr.Elem().Set(resultsVal)
 
 	return cursor, nil
+}
+
+func ensureMandatoryParams(p FindParams) FindParams {
+	if p.PaginatedField == "" {
+		p.PaginatedField = "_id"
+		p.Collation = nil
+	}
+
+	return p
 }
 
 var parseCursor = func(cursor string, shouldSecondarySortOnID bool) ([]interface{}, error) {

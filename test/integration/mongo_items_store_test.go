@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -93,6 +94,32 @@ func TestMongoFindManyPagination(t *testing.T) {
 	require.Equal(t, item2.ID, foundItems[1].ID)
 
 	// Cleanup
+	err = store.RemoveAll(context.Background())
+	require.NoError(t, err)
+}
+
+func TestPaginationWithoutPaginatedField(t *testing.T) {
+	const itemNamePrefix = "TestPaginationWithoutPaginatedField"
+	store := newMongoStore(t)
+	searchQuery := bson.M{"name": primitive.Regex{Pattern: fmt.Sprintf("%s.*", itemNamePrefix)}}
+
+	item1 := createMongoItem(t, store, fmt.Sprintf("%s-1", itemNamePrefix))
+	item2 := createMongoItem(t, store, fmt.Sprintf("%s-2", itemNamePrefix))
+
+	// Call Find without paginatedField argument.
+	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "", "", 1, true, "", &options.Collation{}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, foundItems, 1)
+	require.Equal(t, item1.Name, foundItems[0].Name)
+	require.True(t, cursor.HasNext)
+
+	// Validate that cursor.Next works as expected.
+	foundItems, cursor, err = store.Find(context.Background(), searchQuery, cursor.Next, "", 1, true, "", &options.Collation{}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, foundItems, 1)
+	require.Equal(t, item2.Name, foundItems[0].Name)
+
+	// Cleanup.
 	err = store.RemoveAll(context.Background())
 	require.NoError(t, err)
 }
