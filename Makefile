@@ -9,7 +9,9 @@ mod:
 
 # Update dependencies
 mod-update:
-	@go get -u .
+	@go get -u ./bson
+	@go get -u ./mgo
+	@go get -u ./mongo
 	@$(MAKE) mod
 
 # Lint the code
