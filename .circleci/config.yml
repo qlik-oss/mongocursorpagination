@@ -106,7 +106,7 @@ jobs:
             echo "mode: set" > cover.out
             grep -h -v "^mode:" /workspace/unit.cover /workspace/integration.cover >> cover.out
             sed -i "s/github.com\/qlik-oss\/mongocursorpagination\///" cover.out
-            go get github.com/cbrand/gocov-merge
+            go install github.com/cbrand/gocov-merge@latest
             gocov-merge cover.out > c.out
             cat c.out
             ./cc-test-reporter before-build
