@@ -2,6 +2,7 @@ package bson
 
 import (
 	"errors"
+	"fmt"
 )
 
 // GenerateCursorQuery generates and returns a cursor range query
@@ -15,7 +16,7 @@ func GenerateCursorQuery(shouldSecondarySortOnID bool, paginatedField string, co
 		query = map[string]interface{}{"$or": []map[string]interface{}{
 			{paginatedField: map[string]interface{}{comparisonOp: cursorFieldValues[0]}},
 			{"$and": []map[string]interface{}{
-				{paginatedField: map[string]interface{}{"$eq": cursorFieldValues[0]}},
+				{paginatedField: map[string]interface{}{fmt.Sprintf("%se", comparisonOp): cursorFieldValues[0]}},
 				{"_id": map[string]interface{}{comparisonOp: cursorFieldValues[1]}},
 			}},
 		}}

@@ -44,7 +44,7 @@ func TestGenerateCursorQuery(t *testing.T) {
 			map[string]interface{}{"$or": []map[string]interface{}{
 				{"name": map[string]interface{}{"$gt": "test item"}},
 				{"$and": []map[string]interface{}{
-					{"name": map[string]interface{}{"$eq": "test item"}},
+					{"name": map[string]interface{}{"$gte": "test item"}},
 					{"_id": map[string]interface{}{"$gt": "123"}}},
 				},
 			}},

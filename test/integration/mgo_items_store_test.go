@@ -86,6 +86,56 @@ func TestCollectionsFindManyPagination(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestFindManyPaginationWithDuplicatedPaginatedField(t *testing.T) {
+	store := newStore(t)
+
+	searchQuery := bson.M{"name": "duplicated name"}
+	englishCollation := mgo.Collation{Locale: "en", Strength: 3}
+
+	// Get empty array when no items created
+	foundItems, cursor, err := store.Find(searchQuery, "", "", 4, false, "name", englishCollation)
+	require.NoError(t, err)
+	require.Empty(t, foundItems)
+	require.False(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+
+	item1 := createItem(t, store, "duplicated name")
+	item2 := createItem(t, store, "duplicated name")
+	item3 := createItem(t, store, "duplicated name")
+	item4 := createItem(t, store, "duplicated name")
+
+	// Get first page of search for items
+	foundItems, cursor, err = store.Find(searchQuery, "", "", 2, false, "name", englishCollation)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item4.ID, foundItems[0].ID)
+	require.Equal(t, item3.ID, foundItems[1].ID)
+
+	// Get 2nd page of search for items
+	foundItems, cursor, err = store.Find(searchQuery, cursor.Next, "", 2, false, "name", englishCollation)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.False(t, cursor.HasNext)
+	require.True(t, cursor.HasPrevious)
+	require.Equal(t, item2.ID, foundItems[0].ID)
+	require.Equal(t, item1.ID, foundItems[1].ID)
+
+	// Get previous page of search for items
+	foundItems, cursor, err = store.Find(searchQuery, "", cursor.Previous, 2, false, "name", englishCollation)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item4.ID, foundItems[0].ID)
+	require.Equal(t, item3.ID, foundItems[1].ID)
+
+	// Cleanup
+	err = store.RemoveAll()
+	require.NoError(t, err)
+}
+
 func TestCollectionsFindManyCursorError(t *testing.T) {
 	store := newStore(t)
 
