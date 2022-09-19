@@ -338,7 +338,7 @@ func generateCursor(result interface{}, paginatedField string, shouldSecondarySo
 	// Handle pointer values and reduce number of times reflection is done on the same type.
 	val := reflect.ValueOf(result)
 	if val.Kind() == reflect.Ptr {
-		val = reflect.Indirect(val)
+		_ = reflect.Indirect(val)
 	}
 
 	var recordAsBytes []byte
