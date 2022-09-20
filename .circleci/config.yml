@@ -30,7 +30,7 @@ jobs:
           name: Pull public Docker images in the background
           background: true
           command: |
-            docker pull golang:1.18-alpine
+            docker pull golang:1.19-alpine
       - run:
           name: Build a test image
           command: |

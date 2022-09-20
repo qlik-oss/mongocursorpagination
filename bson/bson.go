@@ -12,11 +12,14 @@ func GenerateCursorQuery(shouldSecondarySortOnID bool, paginatedField string, co
 		(!shouldSecondarySortOnID && len(cursorFieldValues) != 1) {
 		return nil, errors.New("wrong number of cursor field values specified")
 	}
+
+	rangeOp := fmt.Sprintf("%se", comparisonOp)
+
 	if shouldSecondarySortOnID {
 		query = map[string]interface{}{"$or": []map[string]interface{}{
 			{paginatedField: map[string]interface{}{comparisonOp: cursorFieldValues[0]}},
 			{"$and": []map[string]interface{}{
-				{paginatedField: map[string]interface{}{fmt.Sprintf("%se", comparisonOp): cursorFieldValues[0]}},
+				{paginatedField: map[string]interface{}{rangeOp: cursorFieldValues[0]}},
 				{"_id": map[string]interface{}{comparisonOp: cursorFieldValues[1]}},
 			}},
 		}}
