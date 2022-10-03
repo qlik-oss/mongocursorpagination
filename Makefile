@@ -9,7 +9,10 @@ mod:
 
 # Update dependencies
 mod-update:
-	@go get -u .
+	@go get -u ./bson
+	@go get -u ./mgo
+	@go get -u ./mongo
+	@go get -u ./test/integration
 	@$(MAKE) mod
 
 LINT_VER := 1.49.0
