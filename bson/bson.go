@@ -13,6 +13,10 @@ func GenerateCursorQuery(shouldSecondarySortOnID bool, paginatedField string, co
 		return nil, errors.New("wrong number of cursor field values specified")
 	}
 
+	if comparisonOp != "$lt" && comparisonOp != "$gt" {
+		return nil, errors.New("invalid comparison operator specified: only $lt and $gt are allowed")
+	}
+
 	rangeOp := fmt.Sprintf("%se", comparisonOp)
 
 	if shouldSecondarySortOnID {

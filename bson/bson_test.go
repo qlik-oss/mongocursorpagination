@@ -36,6 +36,15 @@ func TestGenerateCursorQuery(t *testing.T) {
 			errors.New("wrong number of cursor field values specified"),
 		},
 		{
+			"error when an invalid comparison operator is specified",
+			false,
+			"name",
+			"$blabla",
+			[]interface{}{"abc"},
+			nil,
+			errors.New("invalid comparison operator specified: only $lt and $gt are allowed"),
+		},
+		{
 			"return appropriate cursor query when shouldSecondarySortOnID is true",
 			true,
 			"name",
