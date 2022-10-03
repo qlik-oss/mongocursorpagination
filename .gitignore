@@ -1,3 +1,4 @@
 *.cover
 .idea/
 .vscode/
+bin/

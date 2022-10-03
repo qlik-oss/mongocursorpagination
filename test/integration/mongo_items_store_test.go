@@ -178,7 +178,7 @@ func TestMongoBuildPaginatedQueries(t *testing.T) {
 				"$and": []map[string]interface{}{
 					{
 						"name": map[string]interface{}{
-							"$eq": "foo",
+							"$gte": "foo",
 						},
 					},
 					{

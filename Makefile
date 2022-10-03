@@ -9,12 +9,18 @@ mod:
 
 # Update dependencies
 mod-update:
-	@go get -u .
+	@go get -u ./bson
+	@go get -u ./mgo
+	@go get -u ./mongo
+	@go get -u ./test/integration
 	@$(MAKE) mod
 
-# Lint the code
+LINT_VER := 1.49.0
+LINT_NAME := "golangci-lint_$(LINT_VER)"
+
 lint:
-	./scripts/lint.sh
+	if [ ! -e ./bin/$(LINT_NAME) ]; then (curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v$(LINT_VER)) && mv ./bin/golangci-lint ./bin/$(LINT_NAME); fi
+	./bin/$(LINT_NAME) run --timeout 5m
 
 # Build the Docker test image
 build-test-docker:
