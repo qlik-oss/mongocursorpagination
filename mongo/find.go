@@ -77,7 +77,7 @@ type (
 		// Example: bson.D{"_id":0, "name": 1}
 		Projection interface{}
 		// This parameter will set the maxTimeMS option on the mongo find cursor, making sure we add a limit to the amount of time
-		// mongo can process this on the backend. Will default to 45 seconds, but should be set to lower by the user
+		// mongo can process this on the backend. Will default to 45 seconds, but should be set to an appropriate duration
 		Timeout time.Duration
 	}
 
