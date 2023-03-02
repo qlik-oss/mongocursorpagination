@@ -8,11 +8,16 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
 	mcpbson "github.com/qlik-oss/mongocursorpagination/bson"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+const (
+	defaultCursorTimeout = 45 * time.Second
 )
 
 type (
@@ -71,6 +76,9 @@ type (
 		// is nil, which means all fields will be included.
 		// Example: bson.D{"_id":0, "name": 1}
 		Projection interface{}
+		// This parameter will set the maxTimeMS option on the mongo find cursor, making sure we add a limit to the amount of time
+		// mongo can process this on the backend. Will default to 45 seconds, but should be set to an appropriate duration
+		Timeout time.Duration
 	}
 
 	// Cursor holds the pagination data about the find mongo query that was performed.
@@ -184,7 +192,7 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	}
 
 	// Execute the augmented query, get an additional element to see if there's another page
-	err = executeCursorQuery(ctx, p.Collection, queries, sort, p.Limit, p.Collation, p.Hint, p.Projection, results)
+	err = executeCursorQuery(ctx, p.Collection, queries, sort, p.Limit, p.Collation, p.Hint, p.Projection, p.Timeout, results)
 	if err != nil {
 		return Cursor{}, err
 	}
@@ -305,7 +313,7 @@ var executeCountQuery = func(ctx context.Context, c Collection, queries []bson.M
 	return int(count), nil
 }
 
-func executeCursorQuery(ctx context.Context, c Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, hint interface{}, projection interface{}, results interface{}) error {
+func executeCursorQuery(ctx context.Context, c Collection, query []bson.M, sort bson.D, limit int64, collation *options.Collation, hint interface{}, projection interface{}, timeout time.Duration, results interface{}) error {
 	options := options.Find()
 	options.SetSort(sort)
 	options.SetLimit(limit + 1)
@@ -318,6 +326,11 @@ func executeCursorQuery(ctx context.Context, c Collection, query []bson.M, sort 
 	}
 	if projection != nil {
 		options.SetProjection(projection)
+	}
+	if timeout > time.Duration(0) {
+		options.SetMaxTime(timeout)
+	} else {
+		options.SetMaxTime(defaultCursorTimeout)
 	}
 	cursor, err := c.Find(ctx, bson.M{"$and": query}, options)
 	if err != nil {
