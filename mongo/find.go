@@ -308,16 +308,16 @@ func decodeCursor(cursor string) (bson.D, error) {
 }
 
 var executeCountQuery = func(ctx context.Context, c Collection, queries []bson.M, collation *options.Collation, timeout time.Duration) (int, error) {
-	var countOptions *options.CountOptions
+	options := options.Count()
 	if collation != nil {
-		countOptions.SetCollation(collation)
+		options.SetCollation(collation)
 	}
 	if timeout > time.Duration(0) {
-		countOptions.SetMaxTime(timeout)
+		options.SetMaxTime(timeout)
 	} else {
-		countOptions.SetMaxTime(defaultCursorTimeout)
+		options.SetMaxTime(defaultCursorTimeout)
 	}
-	count, err := c.CountDocuments(ctx, bson.M{"$and": queries}, countOptions)
+	count, err := c.CountDocuments(ctx, bson.M{"$and": queries}, options)
 	if err != nil {
 		return 0, err
 	}
