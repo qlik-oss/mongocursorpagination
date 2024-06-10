@@ -61,12 +61,13 @@ type (
 		//    }
 		//
 		PaginatedField string
-		Collation      *options.Collation
+		// This parameter will also apply timeout of counting total results
+		Collation *options.Collation
 		// The value to start querying the page
 		Next string
 		// The value to start querying previous page
 		Previous string
-		// Whether or not to include total count of documents matching filter in the cursor
+		// Whether to include total count of documents matching filter in the cursor
 		// Specifying true makes an additional query
 		CountTotal bool
 		// The index to use for the operation. This should either be the index name as a string or the index specification
@@ -78,6 +79,7 @@ type (
 		Projection interface{}
 		// This parameter will set the maxTimeMS option on the mongo find cursor, making sure we add a limit to the amount of time
 		// mongo can process this on the backend. Will default to 45 seconds, but should be set to an appropriate duration
+		// This parameter will also apply timeout of counting total results
 		Timeout time.Duration
 	}
 
@@ -180,7 +182,7 @@ func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error
 	// Compute total count of documents matching filter - only computed if CountTotal is True
 	var count int
 	if p.CountTotal {
-		count, err = executeCountQuery(ctx, p.Collection, []bson.M{p.Query})
+		count, err = executeCountQuery(ctx, p.Collection, []bson.M{p.Query}, p.Collation, p.Timeout)
 		if err != nil {
 			return Cursor{}, err
 		}
@@ -305,8 +307,17 @@ func decodeCursor(cursor string) (bson.D, error) {
 	return cursorData, err
 }
 
-var executeCountQuery = func(ctx context.Context, c Collection, queries []bson.M) (int, error) {
-	count, err := c.CountDocuments(ctx, bson.M{"$and": queries})
+var executeCountQuery = func(ctx context.Context, c Collection, queries []bson.M, collation *options.Collation, timeout time.Duration) (int, error) {
+	var countOptions *options.CountOptions
+	if collation != nil {
+		countOptions.SetCollation(collation)
+	}
+	if timeout > time.Duration(0) {
+		countOptions.SetMaxTime(timeout)
+	} else {
+		countOptions.SetMaxTime(defaultCursorTimeout)
+	}
+	count, err := c.CountDocuments(ctx, bson.M{"$and": queries}, countOptions)
 	if err != nil {
 		return 0, err
 	}
