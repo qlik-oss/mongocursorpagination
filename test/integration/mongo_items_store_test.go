@@ -251,9 +251,8 @@ func TestMongoProjection(t *testing.T) {
 	_ = createMongoItem(t, store, "test item 1", "")
 
 	searchQuery := bson.M{}
-	projection := bson.D{
-		{Key: "_id", Value: 0}, // Do not return ID
-		{Key: "name", Value: 1},
+	projection := bson.D{bson.E{Key: "_id", Value: 0}, // Do not return ID
+		bson.E{Key: "name", Value: 1},
 	}
 
 	foundItems, _, err := store.FindBSONRaw(context.Background(), searchQuery, "", "", 2, true, "name", nil, nil, projection)
@@ -278,13 +277,13 @@ func TestMongoHint(t *testing.T) {
 	_, _, err := store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, "indexName_id", nil)
 	require.True(t, errors.As(err, &mongo.CommandError{}), "non existing index by name should result in a command error")
 
-	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, bson.D{{Key: "created", Value: 1}}, nil)
+	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, bson.D{bson.E{Key: "created", Value: 1}}, nil)
 	require.True(t, errors.As(err, &mongo.CommandError{}), "non existing index by specification document should result in a command error")
 
 	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, "_id_", nil)
 	require.NoError(t, err, "hinting the default _id index by name should succeed")
 
-	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, bson.D{{Key: "_id", Value: 1}}, nil)
+	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, bson.D{bson.E{Key: "_id", Value: 1}}, nil)
 	require.NoError(t, err, "hinting the default _id index by specification document should succeed")
 
 	// Cleanup
