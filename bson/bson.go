@@ -30,7 +30,7 @@ func GenerateCursorQuery(paginatedFields []string, comparisonOps []string, curso
 				{paginatedFields[0]: map[string]interface{}{comparisonOps[0]: cursorFieldValues[0]}},
 				{"$and": []map[string]interface{}{
 					{paginatedFields[0]: map[string]interface{}{rangeOp: cursorFieldValues[0]}},
-					{"_id": map[string]interface{}{comparisonOps[1]: cursorFieldValues[1]}},
+					{"_id": map[string]interface{}{comparisonOps[0]: cursorFieldValues[1]}},
 				}},
 			}}
 		} else {
@@ -41,7 +41,7 @@ func GenerateCursorQuery(paginatedFields []string, comparisonOps []string, curso
 					{paginatedFields[i]: map[string]interface{}{comparisonOps[i]: cursorFieldValues[i]}},
 					{"$and": []map[string]interface{}{
 						{paginatedFields[i]: map[string]interface{}{rangeOp: cursorFieldValues[i]}},
-						{"_id": map[string]interface{}{comparisonOps[len(comparisonOps)-1]: cursorFieldValues[len(cursorFieldValues)-1]}},
+						{"_id": map[string]interface{}{comparisonOps[i]: cursorFieldValues[len(cursorFieldValues)-1]}},
 					}},
 				}}
 			}

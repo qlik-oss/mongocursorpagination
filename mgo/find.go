@@ -102,10 +102,6 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	}
 	p = ensureMandatoryParams(p)
 
-	if p.PaginatedField == "" {
-		p.PaginatedField = "_id"
-		p.Collation = nil
-	}
 	var numPaginatedFields int
 	if p.PaginatedFields != nil && len(p.PaginatedFields) > 0 {
 		numPaginatedFields = len(p.PaginatedFields)
@@ -253,18 +249,21 @@ func generateComparisonOps(p FindParams) []string {
 	}
 	return comparisonOps
 }
+
 func ensureMandatoryParams(p FindParams) FindParams {
 	if p.PaginatedField == "" {
 		p.PaginatedField = "_id"
 		p.Collation = nil
 	}
 	if p.PaginatedFields == nil || len(p.PaginatedFields) == 0 {
-		if p.PaginatedField == "" {
+		if p.PaginatedField == "_id" {
 			p.PaginatedFields = []string{"_id"}
-			p.Collation = nil
 		} else {
 			p.PaginatedFields = []string{p.PaginatedField, "_id"}
 		}
+	} else if p.PaginatedFields[len(p.PaginatedFields)-1] != "_id" {
+		p.PaginatedFields = append(p.PaginatedFields, "_id")
+		p.SortOrders = append(p.SortOrders, 1)
 	}
 	if p.SortOrders == nil || len(p.SortOrders) == 0 {
 		p.SortOrders = []int{}

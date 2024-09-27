@@ -189,7 +189,7 @@ func TestCollectionFindMultiplePaginatedFields(t *testing.T) {
 	englishCollation := mgo.Collation{Locale: "en", Strength: 3}
 
 	// Get empty array when no items created
-	foundItems, cursor, err := store.Find(searchQuery, "", "", 4, true, "name", englishCollation)
+	foundItems, cursor, err := store.FindMultiplePaginatedFields(searchQuery, "", "", 4, []int{1, -1}, []string{"data", "name"}, englishCollation)
 	require.NoError(t, err)
 	require.Empty(t, foundItems)
 	require.False(t, cursor.HasNext)

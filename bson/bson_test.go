@@ -65,7 +65,7 @@ func TestGenerateCursorQuery(t *testing.T) {
 		{
 			"return appropriate cursor when sorting on multiple fields",
 			[]string{"name", "createdAt", "_id"},
-			[]string{"$lt", "$lt", "$lt"},
+			[]string{"$lt", "$gt", "$lt"},
 			[]interface{}{"test item", "2024", "123"},
 			map[string]interface{}{"$and": []map[string]interface{}{
 				{"$or": []map[string]interface{}{
@@ -74,10 +74,10 @@ func TestGenerateCursorQuery(t *testing.T) {
 						{"name": map[string]interface{}{"$lte": "test item"}},
 						{"_id": map[string]interface{}{"$lt": "123"}}}}}},
 				{"$or": []map[string]interface{}{
-					{"createdAt": map[string]interface{}{"$lt": "2024"}},
+					{"createdAt": map[string]interface{}{"$gt": "2024"}},
 					{"$and": []map[string]interface{}{
-						{"createdAt": map[string]interface{}{"$lte": "2024"}},
-						{"_id": map[string]interface{}{"$lt": "123"}}}}}}}},
+						{"createdAt": map[string]interface{}{"$gte": "2024"}},
+						{"_id": map[string]interface{}{"$gt": "123"}}}}}}}},
 			nil,
 		},
 	}

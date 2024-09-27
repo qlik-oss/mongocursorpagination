@@ -249,9 +249,8 @@ func TestFind(t *testing.T) {
 				return nil
 			},
 			expectedCursor: Cursor{
-				Previous: "",
-				// Next:        "FgAAAAdfaWQAKt31M-gVSd52lssEAA",
-				Next:        "JwAAAAdfaWQAKt31M-gVSd52lssEB19pZAAq3fUz6BVJ3naWywQA",
+				Previous:    "",
+				Next:        "FgAAAAdfaWQAKt31M-gVSd52lssEAA",
 				HasPrevious: false,
 				HasNext:     true,
 				Count:       0,
