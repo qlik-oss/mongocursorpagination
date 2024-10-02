@@ -81,9 +81,10 @@ type (
 		// mongo can process this on the backend. Will default to 45 seconds, but should be set to an appropriate duration
 		// This parameter will also apply timeout of counting total results
 		Timeout time.Duration
-		// The names of multiple fields being paginated and sorted on
+		// The names of multiple fields being paginated and sorted on. Takes precedence over PaginatedField
 		PaginatedFields []string
-		SortOrders      []int
+		// The sort orders corresponding to PaginatedFields. Each value must be either 1 or -1
+		SortOrders []int
 	}
 
 	// Cursor holds the pagination data about the find mongo query that was performed.
@@ -279,7 +280,7 @@ func ensureMandatoryParams(p FindParams) FindParams {
 		p.PaginatedField = "_id"
 		p.Collation = nil
 	}
-	if p.PaginatedFields == nil || len(p.PaginatedFields) == 0 {
+	if len(p.PaginatedFields) == 0 {
 		if p.PaginatedField == "_id" {
 			p.PaginatedFields = []string{"_id"}
 		} else {
@@ -289,7 +290,7 @@ func ensureMandatoryParams(p FindParams) FindParams {
 		p.PaginatedFields = append(p.PaginatedFields, "_id")
 		p.SortOrders = append(p.SortOrders, 1)
 	}
-	if p.SortOrders == nil || len(p.SortOrders) == 0 {
+	if len(p.SortOrders) == 0 {
 		p.SortOrders = []int{}
 		if p.SortAscending {
 			for i := 0; i < len(p.PaginatedFields); i++ {
