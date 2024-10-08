@@ -295,49 +295,49 @@ func TestParseCursor(t *testing.T) {
 	var cases = []struct {
 		name                      string
 		cursor                    string
-		shouldSecondarySortOnID   bool
+		numPaginatedFields        int
 		expectedCursorFieldValues []interface{}
 		expectedErr               error
 	}{
 		{
 			"return appropriate cursor field values when shouldSecondarySortOnID is true",
 			"LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMQAHX2lkABrd9TPoFUnedpbLBAA",
-			true,
+			2,
 			[]interface{}{"test item 1", bson.ObjectIdHex("1addf533e81549de7696cb04")},
 			nil,
 		},
 		{
 			"return appropriate cursor field values when shouldSecondarySortOnID is false",
 			"FgAAAAdfaWQAWt31M-gVSd52lssEAA",
-			false,
+			1,
 			[]interface{}{bson.ObjectIdHex("5addf533e81549de7696cb04")},
 			nil,
 		},
 		{
 			"errors when decode fails",
 			"XXXXXaGVsbG8=",
-			true,
+			2,
 			nil,
 			base64.CorruptInputError(12),
 		},
 		{
 			"errors when expecting cursor with 2 elements and only 1 present",
 			"FgAAAAdfaWQAWt31M-gVSd52lssEAA",
-			true,
+			2,
 			nil,
-			errors.New("expecting a cursor with two elements"),
+			errors.New("expecting a cursor with 2 elements"),
 		},
 		{
 			"errors when expecting cursor with 1 elements and only 2 present",
 			"LwAAAAJuYW1lAAoAAAB0ZXN0IGl0ZW0AAl9pZAANAAAAWt31M-gVSd52lssEAAA",
-			false,
+			1,
 			nil,
 			errors.New("expecting a cursor with a single element"),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cursorFieldValues, err := parseCursor(tc.cursor, tc.shouldSecondarySortOnID)
+			cursorFieldValues, err := parseCursor(tc.cursor, tc.numPaginatedFields)
 			require.Equal(t, tc.expectedCursorFieldValues, cursorFieldValues)
 			require.Equal(t, tc.expectedErr, err)
 		})
@@ -378,6 +378,7 @@ func TestGenerateCursor(t *testing.T) {
 		name                    string
 		result                  interface{}
 		paginatedField          string
+		paginatedFields         []string
 		shouldSecondarySortOnID bool
 		encodeCursor            func(cursorData bson.D) (string, error)
 		expectedCursor          string
@@ -387,6 +388,7 @@ func TestGenerateCursor(t *testing.T) {
 			"return the generated cursor for an item search paginated by _id",
 			item{ID: bson.ObjectIdHex("5addf533e81549de7696cb04"), Name: "test item", CreatedAt: time.Now()},
 			"_id",
+			[]string{"_id"},
 			false,
 			nil,
 			"FgAAAAdfaWQAWt31M-gVSd52lssEAA",
@@ -396,6 +398,7 @@ func TestGenerateCursor(t *testing.T) {
 			"return the generated cursor for an item search paginated by name",
 			item{ID: bson.ObjectIdHex("1addf533e81549de7696cb04"), Name: "test item 1", CreatedAt: time.Now()},
 			"name",
+			[]string{"name", "_id"},
 			true,
 			nil,
 			"LAAAAAJuYW1lAAwAAAB0ZXN0IGl0ZW0gMQAHX2lkABrd9TPoFUnedpbLBAA",
@@ -405,6 +408,7 @@ func TestGenerateCursor(t *testing.T) {
 			"errors when invalid result _id is set",
 			item{ID: "123", Name: "test item", CreatedAt: time.Now()},
 			"_id",
+			[]string{"_id"},
 			false,
 			nil,
 			"",
@@ -414,6 +418,7 @@ func TestGenerateCursor(t *testing.T) {
 			"errors when result is nil",
 			nil,
 			"_id",
+			[]string{"_id"},
 			false,
 			nil,
 			"",
@@ -423,6 +428,7 @@ func TestGenerateCursor(t *testing.T) {
 			"errors when paginated field not found and result is bson.Raw",
 			&[]bson.Raw{},
 			"creatorId",
+			[]string{"creatorId", "_id"},
 			false,
 			nil,
 			"",
@@ -432,6 +438,7 @@ func TestGenerateCursor(t *testing.T) {
 			"errors when encoding fails",
 			item{ID: bson.ObjectIdHex("1addf533e81549de7696cb04"), Name: "test item", CreatedAt: time.Now()},
 			"name",
+			[]string{"name"},
 			false,
 			func(cursorData bson.D) (string, error) {
 				return "", errors.New("error")
@@ -450,7 +457,7 @@ func TestGenerateCursor(t *testing.T) {
 				}()
 			}
 
-			cursor, err := generateCursor(tc.result, tc.paginatedField, tc.shouldSecondarySortOnID)
+			cursor, err := generateCursor(tc.result, tc.paginatedFields)
 			require.Equal(t, tc.expectedCursor, cursor)
 			require.Equal(t, tc.expectedErr, err)
 		})

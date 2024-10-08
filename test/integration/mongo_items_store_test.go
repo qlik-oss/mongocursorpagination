@@ -37,11 +37,12 @@ func newMongoCollection(t *testing.T) *mongoCollectionWrapper {
 	return &col
 }
 
-func createMongoItem(t *testing.T, mongoStore MongoStore, name string) *MongoItem {
+func createMongoItem(t *testing.T, mongoStore MongoStore, name string, data string) *MongoItem {
 	t.Helper()
 	item := &MongoItem{
 		ID:        primitive.NewObjectID(),
 		Name:      name,
+		Data:      data,
 		CreatedAt: time.Now(),
 	}
 	item, err := mongoStore.Create(context.Background(), item)
@@ -61,10 +62,10 @@ func TestMongoFindManyPagination(t *testing.T) {
 	require.False(t, cursor.HasNext)
 	require.False(t, cursor.HasPrevious)
 
-	item4 := createMongoItem(t, store, "test item 4")
-	item1 := createMongoItem(t, store, "test item 1")
-	item3 := createMongoItem(t, store, "test item 3")
-	item2 := createMongoItem(t, store, "test item 2")
+	item4 := createMongoItem(t, store, "test item 4", "")
+	item1 := createMongoItem(t, store, "test item 1", "")
+	item3 := createMongoItem(t, store, "test item 3", "")
+	item2 := createMongoItem(t, store, "test item 2", "")
 
 	// Get first page of search for items
 	foundItems, cursor, err = store.Find(context.Background(), searchQuery, "", "", 2, true, "name", &englishCollation, nil, nil)
@@ -103,8 +104,8 @@ func TestPaginationWithoutPaginatedField(t *testing.T) {
 	store := newMongoStore(t)
 	searchQuery := bson.M{"name": primitive.Regex{Pattern: fmt.Sprintf("%s.*", itemNamePrefix)}}
 
-	item1 := createMongoItem(t, store, fmt.Sprintf("%s-1", itemNamePrefix))
-	item2 := createMongoItem(t, store, fmt.Sprintf("%s-2", itemNamePrefix))
+	item1 := createMongoItem(t, store, fmt.Sprintf("%s-1", itemNamePrefix), "")
+	item2 := createMongoItem(t, store, fmt.Sprintf("%s-2", itemNamePrefix), "")
 
 	// Call Find without paginatedField argument.
 	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "", "", 1, true, "", &options.Collation{}, nil, nil)
@@ -112,7 +113,6 @@ func TestPaginationWithoutPaginatedField(t *testing.T) {
 	require.Len(t, foundItems, 1)
 	require.Equal(t, item1.Name, foundItems[0].Name)
 	require.True(t, cursor.HasNext)
-
 	// Validate that cursor.Next works as expected.
 	foundItems, cursor, err = store.Find(context.Background(), searchQuery, cursor.Next, "", 1, true, "", &options.Collation{}, nil, nil)
 	require.NoError(t, err)
@@ -141,10 +141,10 @@ func TestMongoPaginationBSONRaw(t *testing.T) {
 	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
 	englishCollation := options.Collation{Locale: "en", Strength: 3}
 
-	item1 := createMongoItem(t, store, "test item 1")
-	item2 := createMongoItem(t, store, "test item 2")
-	createMongoItem(t, store, "test item 3")
-	createMongoItem(t, store, "test item 4")
+	item1 := createMongoItem(t, store, "test item 1", "")
+	item2 := createMongoItem(t, store, "test item 2", "")
+	createMongoItem(t, store, "test item 3", "")
+	createMongoItem(t, store, "test item 4", "")
 
 	foundItems, cursor, err := store.FindBSONRaw(context.Background(), searchQuery, "", "", 2, true, "name", &englishCollation, nil, nil)
 	require.NoError(t, err)
@@ -247,13 +247,12 @@ func TestMongoBuildPaginatedQueries(t *testing.T) {
 func TestMongoProjection(t *testing.T) {
 	store := newMongoStore(t)
 
-	_ = createMongoItem(t, store, "test item 0")
-	_ = createMongoItem(t, store, "test item 1")
+	_ = createMongoItem(t, store, "test item 0", "")
+	_ = createMongoItem(t, store, "test item 1", "")
 
 	searchQuery := bson.M{}
-	projection := bson.D{
-		{Key: "_id", Value: 0}, // Do not return ID
-		{Key: "name", Value: 1},
+	projection := bson.D{bson.E{Key: "_id", Value: 0}, // Do not return ID
+		bson.E{Key: "name", Value: 1},
 	}
 
 	foundItems, _, err := store.FindBSONRaw(context.Background(), searchQuery, "", "", 2, true, "name", nil, nil, projection)
@@ -272,19 +271,19 @@ func TestMongoHint(t *testing.T) {
 	searchQuery := bson.M{}
 
 	for _, c := range "abcdefg" {
-		_ = createMongoItem(t, store, string(c))
+		_ = createMongoItem(t, store, string(c), "")
 	}
 
 	_, _, err := store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, "indexName_id", nil)
 	require.True(t, errors.As(err, &mongo.CommandError{}), "non existing index by name should result in a command error")
 
-	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, bson.D{{Key: "created", Value: 1}}, nil)
+	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, bson.D{bson.E{Key: "created", Value: 1}}, nil)
 	require.True(t, errors.As(err, &mongo.CommandError{}), "non existing index by specification document should result in a command error")
 
 	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, "_id_", nil)
 	require.NoError(t, err, "hinting the default _id index by name should succeed")
 
-	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, bson.D{{Key: "_id", Value: 1}}, nil)
+	_, _, err = store.Find(context.Background(), searchQuery, "", "", 10, true, "_id", nil, bson.D{bson.E{Key: "_id", Value: 1}}, nil)
 	require.NoError(t, err, "hinting the default _id index by specification document should succeed")
 
 	// Cleanup
@@ -296,4 +295,62 @@ func encodeCursor(t *testing.T, cursorData bson.D) string {
 	data, err := bson.Marshal(cursorData)
 	require.NoError(t, err, "invalid cursorData given to encodeCursor")
 	return base64.RawURLEncoding.EncodeToString(data)
+}
+
+func TestMongoFindMultiplePaginatedFields(t *testing.T) {
+	store := newMongoStore(t)
+	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
+	englishCollation := options.Collation{Locale: "en", Strength: 3}
+
+	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "", "", 4, true, "name", &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Empty(t, foundItems)
+	require.False(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+
+	item1 := createMongoItem(t, store, "test item 1", "5")
+	item2 := createMongoItem(t, store, "test item 2", "5")
+	item3 := createMongoItem(t, store, "test item 3", "5")
+	item4 := createMongoItem(t, store, "test item 4", "5")
+	item5 := createMongoItem(t, store, "test item 5", "4")
+	item6 := createMongoItem(t, store, "test item 6", "4")
+	item7 := createMongoItem(t, store, "test item 7", "3")
+	item8 := createMongoItem(t, store, "test item 8", "2")
+
+	// Get first page of search for items
+	foundItems, cursor, err = store.FindMultiplePaginatedFields(context.Background(), searchQuery, "", "", 4, []int{1, -1}, []string{"data", "name"}, &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 4, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item8.ID, foundItems[0].ID)
+	require.Equal(t, item7.ID, foundItems[1].ID)
+	require.Equal(t, item6.ID, foundItems[2].ID)
+	require.Equal(t, item5.ID, foundItems[3].ID)
+
+	// Get 2nd page of search for items
+	foundItems, cursor, err = store.FindMultiplePaginatedFields(context.Background(), searchQuery, cursor.Next, "", 4, []int{1, -1}, []string{"data", "name"}, &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 4, len(foundItems))
+	require.False(t, cursor.HasNext)
+	require.True(t, cursor.HasPrevious)
+	require.Equal(t, item4.ID, foundItems[0].ID)
+	require.Equal(t, item3.ID, foundItems[1].ID)
+	require.Equal(t, item2.ID, foundItems[2].ID)
+	require.Equal(t, item1.ID, foundItems[3].ID)
+
+	// Get previous page of search for items
+	foundItems, cursor, err = store.FindMultiplePaginatedFields(context.Background(), searchQuery, "", cursor.Previous, 4, []int{1, -1}, []string{"data", "name"}, &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 4, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item8.ID, foundItems[0].ID)
+	require.Equal(t, item7.ID, foundItems[1].ID)
+	require.Equal(t, item6.ID, foundItems[2].ID)
+	require.Equal(t, item5.ID, foundItems[3].ID)
+
+	// Cleanup
+	err = store.RemoveAll(context.Background())
+	require.NoError(t, err)
 }
