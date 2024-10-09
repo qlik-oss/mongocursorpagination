@@ -15,7 +15,6 @@ type (
 	MongoItem struct {
 		ID        primitive.ObjectID `bson:"_id"`
 		Name      string             `bson:"name"`
-		Data      string             `bson:"data"`
 		CreatedAt time.Time          `bson:"createdAt"`
 	}
 
@@ -24,7 +23,6 @@ type (
 		RemoveAll(context.Context) error
 		Find(ctx context.Context, query interface{}, next string, previous string, limit int64, sortAscending bool, paginatedField string, collation *options.Collation, hint interface{}, projection interface{}) ([]*MongoItem, mongocursorpagination.Cursor, error)
 		FindBSONRaw(ctx context.Context, query interface{}, next string, previous string, limit int64, sortAscending bool, paginatedField string, collation *options.Collation, hint interface{}, projection interface{}) ([]bson.Raw, mongocursorpagination.Cursor, error)
-		FindMultiplePaginatedFields(ctx context.Context, query interface{}, next string, previous string, limit int64, sortOrders []int, paginatedFields []string, collation *options.Collation, hint interface{}, projection interface{}) ([]*MongoItem, mongocursorpagination.Cursor, error)
 	}
 
 	mongoStore struct {
@@ -78,12 +76,6 @@ func (m *mongoStore) Find(ctx context.Context, query interface{}, next string, p
 	return items, cursor, err
 }
 
-func (m *mongoStore) FindMultiplePaginatedFields(ctx context.Context, query interface{}, next string, previous string, limit int64, sortOrders []int, paginatedFields []string, collation *options.Collation, hint interface{}, projection interface{}) ([]*MongoItem, mongocursorpagination.Cursor, error) {
-	var items []*MongoItem
-	cursor, err := m.mongoFindMultiplePaginatedFields(ctx, query, next, previous, limit, sortOrders, paginatedFields, collation, hint, projection, &items)
-	return items, cursor, err
-}
-
 func (m *mongoStore) FindBSONRaw(ctx context.Context, query interface{}, next string, previous string, limit int64, sortAscending bool, paginatedField string, collation *options.Collation, hint interface{}, projection interface{}) ([]bson.Raw, mongocursorpagination.Cursor, error) {
 	var items []bson.Raw
 	cursor, err := m.mongoFind(ctx, query, next, previous, limit, sortAscending, paginatedField, collation, hint, projection, &items)
@@ -104,31 +96,6 @@ func (m *mongoStore) mongoFind(ctx context.Context, query interface{}, next stri
 		CountTotal:     true,
 		Hint:           hint,
 		Projection:     projection,
-	}
-	c, err := mongocursorpagination.Find(ctx, fp, results)
-	cursor := mongocursorpagination.Cursor{
-		Previous:    c.Previous,
-		Next:        c.Next,
-		HasPrevious: c.HasPrevious,
-		HasNext:     c.HasNext,
-	}
-	return cursor, err
-}
-
-func (m *mongoStore) mongoFindMultiplePaginatedFields(ctx context.Context, query interface{}, next string, previous string, limit int64, sortOrders []int, paginatedFields []string, collation *options.Collation, hint interface{}, projection interface{}, results interface{}) (mongocursorpagination.Cursor, error) {
-	bsonQuery := query.(bson.M)
-	fp := mongocursorpagination.FindParams{
-		Collection:      m.col,
-		Query:           bsonQuery,
-		Limit:           limit,
-		SortOrders:      sortOrders,
-		PaginatedFields: paginatedFields,
-		Collation:       collation,
-		Next:            next,
-		Previous:        previous,
-		CountTotal:      true,
-		Hint:            hint,
-		Projection:      projection,
 	}
 	c, err := mongocursorpagination.Find(ctx, fp, results)
 	cursor := mongocursorpagination.Cursor{
