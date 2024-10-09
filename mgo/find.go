@@ -63,10 +63,6 @@ type (
 		// Whether or not to include total count of documents matching filter in the cursor
 		// Specifying true makes an additionnal query
 		CountTotal bool
-		// The names of multiple fields being paginated and sorted on. Takes precedence over PaginatedField
-		PaginatedFields []string
-		// The sort orders corresponding to PaginatedFields. Each value must be either 1 or -1
-		SortOrders []int
 	}
 
 	// Cursor holds the pagination data about the find mongo query that was performed.
@@ -101,14 +97,12 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	if results == nil {
 		return Cursor{}, errors.New("results can't be nil")
 	}
-	p = ensureMandatoryParams(p)
 
-	var numPaginatedFields int
-	if p.PaginatedFields != nil && len(p.PaginatedFields) > 0 {
-		numPaginatedFields = len(p.PaginatedFields)
-	} else {
-		numPaginatedFields = 1
+	if p.PaginatedField == "" {
+		p.PaginatedField = "_id"
+		p.Collation = nil
 	}
+	shouldSecondarySortOnID := p.PaginatedField != "_id"
 
 	if p.DB == nil {
 		return Cursor{}, errors.New("DB can't be nil")
@@ -118,17 +112,24 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 		return Cursor{}, errors.New("a limit of at least 1 is required")
 	}
 
-	nextCursorValues, err := parseCursor(p.Next, numPaginatedFields)
+	nextCursorValues, err := parseCursor(p.Next, shouldSecondarySortOnID)
 	if err != nil {
 		return Cursor{}, &CursorError{fmt.Errorf("next cursor parse failed: %s", err)}
 	}
 
-	previousCursorValues, err := parseCursor(p.Previous, numPaginatedFields)
+	previousCursorValues, err := parseCursor(p.Previous, shouldSecondarySortOnID)
 	if err != nil {
 		return Cursor{}, &CursorError{fmt.Errorf("previous cursor parse failed: %s", err)}
 	}
 
-	comparisonOps := generateComparisonOps(p)
+	// Figure out the sort direction and comparison operator that will be used in the augmented query
+	sortAsc := (!p.SortAscending && p.Previous != "") || (p.SortAscending && p.Previous == "")
+	comparisonOp := "$gt"
+	sortDir := ""
+	if !sortAsc {
+		comparisonOp = "$lt"
+		sortDir = "-"
+	}
 
 	// Augment the specified find query with cursor data
 	queries := []bson.M{p.Query}
@@ -151,7 +152,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 			cursorValues = previousCursorValues
 		}
 		var cursorQuery bson.M
-		cursorQuery, err = mcpbson.GenerateCursorQuery(p.PaginatedFields, comparisonOps, cursorValues)
+		cursorQuery, err = mcpbson.GenerateCursorQuery(shouldSecondarySortOnID, p.PaginatedField, comparisonOp, cursorValues)
 		if err != nil {
 			return Cursor{}, err
 		}
@@ -160,12 +161,13 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 
 	// Setup the sort query
 	var sort []string
-	for i := range p.PaginatedFields {
-		sortDir := ""
-		if p.SortOrders[i] == -1 {
-			sortDir = "-"
+	if shouldSecondarySortOnID {
+		sort = []string{
+			fmt.Sprintf("%s%s", sortDir, p.PaginatedField),
+			fmt.Sprintf("%s%s", sortDir, "_id"),
 		}
-		sort = append(sort, fmt.Sprintf("%s%s", sortDir, p.PaginatedFields[i]))
+	} else {
+		sort = []string{fmt.Sprintf("%s%s", sortDir, "_id")}
 	}
 
 	// Execute the augmented query, get an additional element to see if there's another page
@@ -204,7 +206,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 		// Generate the previous cursor
 		if hasPrevious {
 			firstResult := resultsVal.Index(0).Interface()
-			previousCursor, err = generateCursor(firstResult, p.PaginatedFields)
+			previousCursor, err = generateCursor(firstResult, p.PaginatedField, shouldSecondarySortOnID)
 			if err != nil {
 				return Cursor{}, fmt.Errorf("could not create a previous cursor: %s", err)
 			}
@@ -213,7 +215,7 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 		// Generate the next cursor
 		if hasNext {
 			lastResult := resultsVal.Index(resultsVal.Len() - 1).Interface()
-			nextCursor, err = generateCursor(lastResult, p.PaginatedFields)
+			nextCursor, err = generateCursor(lastResult, p.PaginatedField, shouldSecondarySortOnID)
 			if err != nil {
 				return Cursor{}, fmt.Errorf("could not create a next cursor: %s", err)
 			}
@@ -235,70 +237,29 @@ func Find(p FindParams, results interface{}) (Cursor, error) {
 	return cursor, nil
 }
 
-func generateComparisonOps(p FindParams) []string {
-	comparisonOps := make([]string, 0, len(p.SortOrders))
-	for i := range p.SortOrders {
-		// Figure out the sort direction and comparison operator that will be used in the augmented query
-		sortAsc := (p.SortOrders[i] == -1 && p.Previous != "") || (p.SortOrders[i] == 1 && p.Previous == "")
-		if sortAsc {
-			comparisonOps = append(comparisonOps, "$gt")
-			p.SortOrders[i] = 1
-		} else {
-			comparisonOps = append(comparisonOps, "$lt")
-			p.SortOrders[i] = -1
-		}
-	}
-	return comparisonOps
-}
-
-func ensureMandatoryParams(p FindParams) FindParams {
-	if p.PaginatedField == "" {
-		p.PaginatedField = "_id"
-		p.Collation = nil
-	}
-	if len(p.PaginatedFields) == 0 {
-		if p.PaginatedField == "_id" {
-			p.PaginatedFields = []string{"_id"}
-		} else {
-			p.PaginatedFields = []string{p.PaginatedField, "_id"}
-		}
-	} else if p.PaginatedFields[len(p.PaginatedFields)-1] != "_id" {
-		p.PaginatedFields = append(p.PaginatedFields, "_id")
-		p.SortOrders = append(p.SortOrders, 1)
-	}
-	if len(p.SortOrders) == 0 {
-		p.SortOrders = []int{}
-		if p.SortAscending {
-			for i := 0; i < len(p.PaginatedFields); i++ {
-				p.SortOrders = append(p.SortOrders, 1)
-			}
-		} else {
-			for i := 0; i < len(p.PaginatedFields); i++ {
-				p.SortOrders = append(p.SortOrders, -1)
-			}
-		}
-	}
-	return p
-}
-
-var parseCursor = func(cursor string, numPaginatedFields int) ([]interface{}, error) {
-	cursorValues := make([]interface{}, 0, numPaginatedFields)
+var parseCursor = func(cursor string, shouldSecondarySortOnID bool) ([]interface{}, error) {
+	cursorValues := make([]interface{}, 0, 2)
 	if cursor != "" {
 		parsedCursor, err := decodeCursor(cursor)
 		if err != nil {
 			return nil, err
 		}
-		if len(parsedCursor) != numPaginatedFields {
-			if numPaginatedFields == 1 {
+		var id interface{}
+		if shouldSecondarySortOnID {
+			if len(parsedCursor) != 2 {
+				return nil, errors.New("expecting a cursor with two elements")
+			}
+			paginatedFieldValue := parsedCursor[0].Value
+			id = parsedCursor[1].Value
+			cursorValues = append(cursorValues, paginatedFieldValue)
+		} else {
+			if len(parsedCursor) != 1 {
 				return nil, errors.New("expecting a cursor with a single element")
 			}
-			return nil, fmt.Errorf("expecting a cursor with %d elements", numPaginatedFields)
+			id = parsedCursor[0].Value
 		}
-		for _, obj := range parsedCursor {
-			cursorValues = append(cursorValues, obj.Value)
-		}
+		cursorValues = append(cursorValues, id)
 	}
-
 	return cursorValues, nil
 }
 
@@ -325,7 +286,7 @@ var executeCursorQuery = func(db MgoDb, collectionName string, query []bson.M, s
 	return db.C(collectionName).Find(bson.M{"$and": query}).Sort(sort...).Collation(collation).Limit(limit + 1).All(results)
 }
 
-func generateCursor(result interface{}, paginatedFields []string) (string, error) {
+func generateCursor(result interface{}, paginatedField string, shouldSecondarySortOnID bool) (string, error) {
 	if result == nil {
 		return "", fmt.Errorf("the specified result must be a non nil value")
 	}
@@ -353,26 +314,23 @@ func generateCursor(result interface{}, paginatedFields []string) (string, error
 	if err != nil {
 		return "", err
 	}
-
+	paginatedFieldValue := recordAsMap[paginatedField]
+	if paginatedFieldValue == nil {
+		return "", fmt.Errorf("paginated field %s not found", paginatedField)
+	}
 	// Set the cursor data
-	cursorData := make(bson.D, 0, len(paginatedFields))
-	for i := range paginatedFields {
-		paginatedFieldValue := recordAsMap[paginatedFields[i]]
-		if paginatedFieldValue == nil {
-			return "", fmt.Errorf("paginated field %s not found", paginatedFields[i])
-		}
-		cursorData = append(cursorData, bson.DocElem{Name: paginatedFields[i], Value: paginatedFieldValue})
+	cursorData := make(bson.D, 0, 2)
+	cursorData = append(cursorData, bson.DocElem{Name: paginatedField, Value: paginatedFieldValue})
+	if shouldSecondarySortOnID {
+		// Get the value of the ID field
+		id := recordAsMap["_id"]
+		cursorData = append(cursorData, bson.DocElem{Name: "_id", Value: id})
 	}
 	// Encode the cursor data into a url safe string
 	cursor, err := encodeCursor(cursorData)
 	if err != nil {
 		return "", fmt.Errorf("failed to encode cursor using %v: %s", cursorData, err)
 	}
-	paginatedFieldValue := recordAsMap[paginatedFields[0]]
-	if paginatedFieldValue == nil {
-		return "", fmt.Errorf("paginated field %s not found", paginatedFields[0])
-	}
-
 	return cursor, nil
 }
 
