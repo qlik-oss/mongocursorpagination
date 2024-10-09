@@ -116,12 +116,6 @@ func (e *CursorError) Error() string {
 // BuildQueries builds the queries without executing them
 func BuildQueries(ctx context.Context, p FindParams) (queries []bson.M, sort bson.D, err error) {
 	p = ensureMandatoryParams(p)
-	var numPaginatedFields int
-	if p.PaginatedFields != nil && len(p.PaginatedFields) > 0 {
-		numPaginatedFields = len(p.PaginatedFields)
-	} else {
-		numPaginatedFields = 1
-	}
 
 	if p.Collection == nil {
 		return []bson.M{}, nil, errors.New("Collection can't be nil")
@@ -134,12 +128,12 @@ func BuildQueries(ctx context.Context, p FindParams) (queries []bson.M, sort bso
 	var nextCursorValues []interface{}
 	var previousCursorValues []interface{}
 
-	nextCursorValues, p, err = parseCursor(p.Next, numPaginatedFields, p)
+	nextCursorValues, p, err = parseCursor(p.Next, p)
 	if err != nil {
 		return []bson.M{}, nil, &CursorError{fmt.Errorf("next cursor parse failed: %s", err)}
 	}
 
-	previousCursorValues, p, err = parseCursor(p.Previous, numPaginatedFields, p)
+	previousCursorValues, p, err = parseCursor(p.Previous, p)
 	if err != nil {
 		return []bson.M{}, nil, &CursorError{fmt.Errorf("previous cursor parse failed: %s", err)}
 	}
@@ -309,8 +303,8 @@ func ensureMandatoryParams(p FindParams) FindParams {
 	return p
 }
 
-var parseCursor = func(cursor string, numPaginatedFields int, p FindParams) ([]interface{}, FindParams, error) {
-	cursorValues := make([]interface{}, 0, numPaginatedFields)
+var parseCursor = func(cursor string, p FindParams) ([]interface{}, FindParams, error) {
+	cursorValues := make([]interface{}, 0)
 	validPaginatedFields := make([]string, 0)
 	validSortOrders := make([]int, 0)
 	if cursor != "" {
@@ -318,12 +312,6 @@ var parseCursor = func(cursor string, numPaginatedFields int, p FindParams) ([]i
 		if err != nil {
 			return nil, p, err
 		}
-		// if len(parsedCursor) != numPaginatedFields {
-		// 	if numPaginatedFields == 1 {
-		// 		return nil, errors.New("expecting a cursor with a single element")
-		// 	}
-		// 	return nil, fmt.Errorf("expecting a cursor with %d elements", numPaginatedFields)
-		// }
 		for _, obj := range parsedCursor {
 			cursorValues = append(cursorValues, obj.Value)
 			i := slices.Index(p.PaginatedFields, obj.Key)
@@ -430,9 +418,6 @@ func generateCursor(result interface{}, paginatedFields []string) (string, error
 	cursorData := make(bson.D, 0, len(paginatedFields))
 	for i := range paginatedFields {
 		paginatedFieldValue := recordAsMap[paginatedFields[i]]
-		// if paginatedFieldValue == nil {
-		// 	return "", fmt.Errorf("paginated field %s not found", paginatedFields[i])
-		// }
 		if paginatedFieldValue != nil {
 			cursorData = append(cursorData, bson.E{Key: paginatedFields[i], Value: paginatedFieldValue})
 		}
