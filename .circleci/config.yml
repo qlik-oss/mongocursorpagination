@@ -8,7 +8,7 @@ default-job-init: &default-job-init
   environment:
     DOCKER_BUILDKIT: "1"
 remote_docker_version: &remote_docker_version
-    version: 20.10.6
+    version: docker24
 load-test-docker-image: &load-test-docker-image
     name: Load test docker image
     command: |
