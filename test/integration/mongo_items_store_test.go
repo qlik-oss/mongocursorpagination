@@ -328,6 +328,17 @@ func TestMongoFindMultiplePaginatedFields(t *testing.T) {
 	require.Equal(t, item6.ID, foundItems[2].ID)
 	require.Equal(t, item5.ID, foundItems[3].ID)
 
+	// Get first page of search for items
+	foundItems, cursor, err = store.FindMultiplePaginatedFields(context.Background(), searchQuery, "", "", 4, []int{1, -1}, []string{"data", "name"}, &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 4, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item8.ID, foundItems[0].ID)
+	require.Equal(t, item7.ID, foundItems[1].ID)
+	require.Equal(t, item6.ID, foundItems[2].ID)
+	require.Equal(t, item5.ID, foundItems[3].ID)
+
 	// Get 2nd page of search for items
 	foundItems, cursor, err = store.FindMultiplePaginatedFields(context.Background(), searchQuery, cursor.Next, "", 4, []int{1, -1}, []string{"data", "name"}, &englishCollation, nil, nil)
 	require.NoError(t, err)
@@ -341,6 +352,86 @@ func TestMongoFindMultiplePaginatedFields(t *testing.T) {
 
 	// Get previous page of search for items
 	foundItems, cursor, err = store.FindMultiplePaginatedFields(context.Background(), searchQuery, "", cursor.Previous, 4, []int{1, -1}, []string{"data", "name"}, &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 4, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item8.ID, foundItems[0].ID)
+	require.Equal(t, item7.ID, foundItems[1].ID)
+	require.Equal(t, item6.ID, foundItems[2].ID)
+	require.Equal(t, item5.ID, foundItems[3].ID)
+
+	// Cleanup
+	err = store.RemoveAll(context.Background())
+	require.NoError(t, err)
+}
+
+func TestMongoFindPaginatedFieldDoesNotExist(t *testing.T) {
+	store := newMongoStore(t)
+	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
+	englishCollation := options.Collation{Locale: "en", Strength: 3}
+
+	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "", "", 4, true, "asdf", &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Empty(t, foundItems)
+	require.False(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+
+	item1 := createMongoItem(t, store, "test item 1", "5")
+	item2 := createMongoItem(t, store, "test item 2", "5")
+	item3 := createMongoItem(t, store, "test item 3", "5")
+	item4 := createMongoItem(t, store, "test item 4", "5")
+	item5 := createMongoItem(t, store, "test item 5", "4")
+	item6 := createMongoItem(t, store, "test item 6", "4")
+	item7 := createMongoItem(t, store, "test item 7", "3")
+	item8 := createMongoItem(t, store, "test item 8", "2")
+
+	// Get first page of search for items
+	foundItems, cursor, err = store.Find(context.Background(), searchQuery, "", "", 4, true, "asdf", &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 4, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item1.ID, foundItems[0].ID)
+	require.Equal(t, item2.ID, foundItems[1].ID)
+	require.Equal(t, item3.ID, foundItems[2].ID)
+	require.Equal(t, item4.ID, foundItems[3].ID)
+
+	// Get 2nd page of search for items
+	foundItems, cursor, err = store.Find(context.Background(), searchQuery, cursor.Next, "", 4, true, "asdf", &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 4, len(foundItems))
+	require.False(t, cursor.HasNext)
+	require.True(t, cursor.HasPrevious)
+	require.Equal(t, item5.ID, foundItems[0].ID)
+	require.Equal(t, item6.ID, foundItems[1].ID)
+	require.Equal(t, item7.ID, foundItems[2].ID)
+	require.Equal(t, item8.ID, foundItems[3].ID)
+
+	// Get first page of search for items
+	foundItems, cursor, err = store.FindMultiplePaginatedFields(context.Background(), searchQuery, "", "", 4, []int{1, -1, 1}, []string{"data", "name", "zxcv"}, &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 4, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item8.ID, foundItems[0].ID)
+	require.Equal(t, item7.ID, foundItems[1].ID)
+	require.Equal(t, item6.ID, foundItems[2].ID)
+	require.Equal(t, item5.ID, foundItems[3].ID)
+
+	// Get 2nd page of search for items
+	foundItems, cursor, err = store.FindMultiplePaginatedFields(context.Background(), searchQuery, cursor.Next, "", 4, []int{1, -1, 1}, []string{"data", "name", "zxcv"}, &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 4, len(foundItems))
+	require.False(t, cursor.HasNext)
+	require.True(t, cursor.HasPrevious)
+	require.Equal(t, item4.ID, foundItems[0].ID)
+	require.Equal(t, item3.ID, foundItems[1].ID)
+	require.Equal(t, item2.ID, foundItems[2].ID)
+	require.Equal(t, item1.ID, foundItems[3].ID)
+
+	// Get previous page of search for items
+	foundItems, cursor, err = store.FindMultiplePaginatedFields(context.Background(), searchQuery, "", cursor.Previous, 4, []int{1, -1, 1}, []string{"data", "name", "zxcv"}, &englishCollation, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, 4, len(foundItems))
 	require.True(t, cursor.HasNext)
