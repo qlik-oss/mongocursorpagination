@@ -116,7 +116,7 @@ func (e *CursorError) Error() string {
 func BuildQueries(ctx context.Context, p FindParams) (queries []bson.M, sort bson.D, err error) {
 	p = ensureMandatoryParams(p)
 	var numPaginatedFields int
-	if p.PaginatedFields != nil && len(p.PaginatedFields) > 0 {
+	if len(p.PaginatedFields) > 0 {
 		numPaginatedFields = len(p.PaginatedFields)
 	} else {
 		numPaginatedFields = 1
@@ -173,10 +173,11 @@ func BuildQueries(ctx context.Context, p FindParams) (queries []bson.M, sort bso
 // slice pointer and returns a Cursor.
 func Find(ctx context.Context, p FindParams, results interface{}) (Cursor, error) {
 	var err error
-	if results == nil {
-		return Cursor{}, errors.New("results can't be nil")
-	}
 	p = ensureMandatoryParams(p)
+	err = validate(results, p.PaginatedFields)
+	if err != nil {
+		return Cursor{}, err
+	}
 
 	// Compute total count of documents matching filter - only computed if CountTotal is True
 	var count int
@@ -418,16 +419,16 @@ func generateCursor(result interface{}, paginatedFields []string) (string, error
 	cursorData := make(bson.D, 0, len(paginatedFields))
 	for i := range paginatedFields {
 		paginatedFieldValue := recordAsMap[paginatedFields[i]]
-		if paginatedFieldValue == nil {
-			return "", fmt.Errorf("paginated field %s not found", paginatedFields[i])
+		if paginatedFieldValue != nil {
+			cursorData = append(cursorData, bson.E{Key: paginatedFields[i], Value: paginatedFieldValue})
 		}
-		cursorData = append(cursorData, bson.E{Key: paginatedFields[i], Value: paginatedFieldValue})
 	}
 	// Encode the cursor data into a url safe string
 	cursor, err := encodeCursor(cursorData)
 	if err != nil {
 		return "", fmt.Errorf("failed to encode cursor using %v: %s", cursorData, err)
 	}
+
 	return cursor, nil
 }
 
@@ -435,4 +436,61 @@ func generateCursor(result interface{}, paginatedFields []string) (string, error
 func encodeCursor(cursorData bson.D) (string, error) {
 	data, err := bson.Marshal(cursorData)
 	return base64.RawURLEncoding.EncodeToString(data), err
+}
+
+// validate verifies that the results array is of a supported type and that its underlying struct has a bson tag that
+// matches each paginated field
+func validate(results interface{}, paginatedFields []string) error {
+	if results == nil {
+		return NewErrInvalidResults("expected results to be non nil")
+	}
+
+	// Check if results is a pointer
+	val := reflect.TypeOf(results)
+	if val.Kind() != reflect.Ptr {
+		return NewErrInvalidResults("expected results to be a slice pointer")
+	}
+
+	// Dereference the pointer to get the slice type
+	elem := val.Elem()
+
+	// Ensure we are dealing with a slice
+	if elem.Kind() != reflect.Slice {
+		return NewErrInvalidResults("expected results to be a slice pointer")
+	}
+
+	// Get the element type of the slice
+	elem = elem.Elem()
+
+	// We can't validate bson.Raw as we don't have the bson tags
+	if elem == reflect.TypeOf(bson.Raw{}) || elem == reflect.TypeOf(&bson.Raw{}) {
+		return nil
+	}
+
+	// If the slice contains pointers to structs, dereference to get the struct type
+	if elem.Kind() == reflect.Ptr {
+		elem = elem.Elem()
+	}
+
+	// Ensure that elem is now a struct
+	if elem.Kind() != reflect.Struct {
+		return NewErrInvalidResults("expected results' element to be a struct or struct pointer")
+	}
+
+	for _, paginatedField := range paginatedFields {
+		paginatedFieldFound := false
+		for i := 0; i < elem.NumField(); i++ {
+			field := elem.Field(i)
+			tag := field.Tag.Get("bson")
+
+			if tag == paginatedField {
+				paginatedFieldFound = true
+				break
+			}
+		}
+		if !paginatedFieldFound {
+			return NewErrPaginatedFieldNotFound(paginatedField)
+		}
+	}
+	return nil
 }

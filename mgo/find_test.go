@@ -36,7 +36,7 @@ func TestFind(t *testing.T) {
 			executeCountQuery:  nil,
 			executeCursorQuery: nil,
 			expectedCursor:     Cursor{},
-			expectedErr:        errors.New("results can't be nil"),
+			expectedErr:        NewErrInvalidResults("expected results to be non nil"),
 		},
 		{
 			name:               "errors when DB is nil",
@@ -425,14 +425,14 @@ func TestGenerateCursor(t *testing.T) {
 			errors.New("the specified result must be a non nil value"),
 		},
 		{
-			"errors when paginated field not found and result is bson.Raw",
+			"return the generated cursor even if a paginated field is not found and result is bson.Raw",
 			&[]bson.Raw{},
 			"creatorId",
 			[]string{"creatorId", "_id"},
 			false,
 			nil,
-			"",
-			errors.New("paginated field creatorId not found"),
+			"BQAAAAA",
+			nil,
 		},
 		{
 			"errors when encoding fails",

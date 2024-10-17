@@ -15,7 +15,7 @@ mod-update:
 	@go get -u ./test/integration
 	@$(MAKE) mod
 
-LINT_VER := 1.49.0
+LINT_VER := 1.61.0
 LINT_NAME := "golangci-lint_$(LINT_VER)"
 
 lint:

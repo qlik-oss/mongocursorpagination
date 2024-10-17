@@ -4,11 +4,11 @@
 default-job-init: &default-job-init
   working_directory: /go/src/github.com/qlik-oss/mongocursorpagination
   docker:
-    - image: qlik/go-build
+    - image: qlik/go-build:2023-01-26
   environment:
     DOCKER_BUILDKIT: "1"
 remote_docker_version: &remote_docker_version
-    version: 20.10.6
+    version: default
 load-test-docker-image: &load-test-docker-image
     name: Load test docker image
     command: |
