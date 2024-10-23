@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	mcpbson "github.com/qlik-oss/mongocursorpagination/bson"
@@ -483,7 +484,10 @@ func validate(results interface{}, paginatedFields []string) error {
 			field := elem.Field(i)
 			tag := field.Tag.Get("bson")
 
-			if tag == paginatedField {
+			tagParts := strings.Split(tag, ",")
+			fieldName := strings.TrimSpace(tagParts[0])
+
+			if fieldName == paginatedField {
 				paginatedFieldFound = true
 				break
 			}

@@ -13,7 +13,7 @@ type (
 	Item struct {
 		ID        primitive.ObjectID `bson:"_id"`
 		Name      string             `bson:"name"`
-		Data      string             `bson:"data"`
+		Data      string             `bson:"data,omitempty"`
 		CreatedAt time.Time          `bson:"createdAt"`
 	}
 )
