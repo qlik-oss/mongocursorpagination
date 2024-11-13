@@ -16,6 +16,12 @@ type (
 		Data      string             `bson:"data,omitempty"`
 		CreatedAt time.Time          `bson:"createdAt"`
 	}
+
+	ItemWithInline struct {
+		ID      primitive.ObjectID `bson:"_id"`
+		Example string             `bson:"example,omitempty"`
+		Item    Item               `bson:",inline"`
+	}
 )
 
 func TestValidate(t *testing.T) {
@@ -72,6 +78,24 @@ func TestValidate(t *testing.T) {
 			results:         &[]*Item{},
 			paginatedFields: nil,
 			expectedErr:     nil,
+		},
+		{
+			name:            "passes validation when results is of a supported type and paginatedFields is found inline",
+			results:         &[]*ItemWithInline{},
+			paginatedFields: []string{"_id", "createdAt"},
+			expectedErr:     nil,
+		},
+		{
+			name:            "passes validation when results is of a supported type and paginatedFields is found",
+			results:         &[]*ItemWithInline{},
+			paginatedFields: []string{"_id", "example"},
+			expectedErr:     nil,
+		},
+		{
+			name:            "errors when results is of a supported type but a paginatedFields is not found even when it's inline",
+			results:         &[]ItemWithInline{},
+			paginatedFields: []string{"_id", "data", "invalid"},
+			expectedErr:     NewErrPaginatedFieldNotFound("invalid"),
 		},
 		{
 			name:            "errors when results is of a supported type but a paginatedFields is not found",

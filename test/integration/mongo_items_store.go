@@ -17,6 +17,11 @@ type (
 		Name      string             `bson:"name"`
 		Data      string             `bson:"data"`
 		CreatedAt time.Time          `bson:"createdAt"`
+		Inline    InlineItem         `bson:",inline"`
+	}
+
+	InlineItem struct {
+		Sample string `bson:"sample"`
 	}
 
 	MongoStore interface {

@@ -491,10 +491,38 @@ func validate(results interface{}, paginatedFields []string) error {
 				paginatedFieldFound = true
 				break
 			}
+
+			if len(tagParts) > 1 && strings.ToLower(strings.TrimSpace(tagParts[1])) == "inline" {
+				// If it's an inline field, check its underlying struct
+				if field.Type.Kind() == reflect.Struct {
+					// Iterate over fields of the embedded struct
+					for j := 0; j < field.Type.NumField(); j++ {
+						inlineField := field.Type.Field(j)
+						inlineTag := inlineField.Tag.Get("bson")
+						inlineTagParts := strings.Split(inlineTag, ",")
+						inlineFieldName := strings.TrimSpace(inlineTagParts[0])
+
+						// Check if the embedded struct contains the paginated field
+						if inlineFieldName == paginatedField {
+							paginatedFieldFound = true
+							break
+						}
+					}
+				}
+			}
+
+			// If we've found the paginated field, break out of the loop
+			if paginatedFieldFound {
+				break
+			}
 		}
+
+		// If the paginated field was not found, return an error
 		if !paginatedFieldFound {
 			return NewErrPaginatedFieldNotFound(paginatedField)
 		}
 	}
+
+	// If all paginated fields are validated successfully, return nil
 	return nil
 }
