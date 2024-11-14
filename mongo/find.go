@@ -493,7 +493,6 @@ func validate(results interface{}, paginatedFields []string) error {
 			}
 
 			if len(tagParts) > 1 && strings.ToLower(strings.TrimSpace(tagParts[1])) == "inline" {
-				// If it's an inline field, check its underlying struct
 				if field.Type.Kind() == reflect.Struct {
 					// Iterate over fields of the embedded struct
 					for j := 0; j < field.Type.NumField(); j++ {
