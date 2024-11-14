@@ -498,13 +498,11 @@ func validate(results interface{}, paginatedFields []string) error {
 			}
 		}
 
-		// If the paginated field was not found, return an error
 		if !paginatedFieldFound {
 			return NewErrPaginatedFieldNotFound(paginatedField)
 		}
 	}
 
-	// If all paginated fields are validated successfully, return nil
 	return nil
 }
 
