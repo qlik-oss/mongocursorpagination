@@ -497,12 +497,10 @@ func validate(results interface{}, paginatedFields []string) error {
 				break
 			}
 		}
-
 		if !paginatedFieldFound {
 			return NewErrPaginatedFieldNotFound(paginatedField)
 		}
 	}
-
 	return nil
 }
 
