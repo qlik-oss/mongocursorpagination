@@ -50,6 +50,20 @@ func createMongoItem(t *testing.T, mongoStore MongoStore, name string, data stri
 	return item
 }
 
+func createItemWithSampleInline(t *testing.T, mongoStore MongoStore, name string, data string, sample string) *MongoItem {
+	t.Helper()
+	item := &MongoItem{
+		ID:        primitive.NewObjectID(),
+		Name:      name,
+		Data:      data,
+		CreatedAt: time.Now(),
+		Inline:    InlineItem{Sample: sample},
+	}
+	item, err := mongoStore.Create(context.Background(), item)
+	require.NoError(t, err)
+	return item
+}
+
 func TestMongoFindManyPagination(t *testing.T) {
 	store := newMongoStore(t)
 	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
@@ -93,6 +107,61 @@ func TestMongoFindManyPagination(t *testing.T) {
 	require.False(t, cursor.HasPrevious)
 	require.Equal(t, item1.ID, foundItems[0].ID)
 	require.Equal(t, item2.ID, foundItems[1].ID)
+
+	// Cleanup
+	err = store.RemoveAll(context.Background())
+	require.NoError(t, err)
+}
+
+func TestMongoFindManyPaginationWithInlineFeature(t *testing.T) {
+	store := newMongoStore(t)
+	searchQuery := bson.M{"sample": primitive.Regex{Pattern: "test.*", Options: "i"}}
+	englishCollation := options.Collation{Locale: "en", Strength: 3}
+
+	// Get empty array when no items created
+	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "", "", 4, true, "name", &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Empty(t, foundItems)
+	require.False(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+
+	item4 := createItemWithSampleInline(t, store, "test item 4", "", "test4")
+	item1 := createItemWithSampleInline(t, store, "test item 1", "", "test1")
+	item3 := createItemWithSampleInline(t, store, "test item 3", "", "test3")
+	item2 := createItemWithSampleInline(t, store, "test item 2", "", "test2")
+
+	// Get first page of search for items
+	foundItems, cursor, err = store.Find(context.Background(), searchQuery, "", "", 2, true, "name", &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item1.ID, foundItems[0].ID)
+	require.Equal(t, item2.ID, foundItems[1].ID)
+	require.Equal(t, item1.Inline.Sample, foundItems[0].Inline.Sample)
+	require.Equal(t, item2.Inline.Sample, foundItems[1].Inline.Sample)
+
+	// Get 2nd page of search for items
+	foundItems, cursor, err = store.Find(context.Background(), searchQuery, cursor.Next, "", 2, true, "name", &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.False(t, cursor.HasNext)
+	require.True(t, cursor.HasPrevious)
+	require.Equal(t, item3.ID, foundItems[0].ID)
+	require.Equal(t, item4.ID, foundItems[1].ID)
+	require.Equal(t, item3.Inline.Sample, foundItems[0].Inline.Sample)
+	require.Equal(t, item4.Inline.Sample, foundItems[1].Inline.Sample)
+
+	// Get previous page of search for items
+	foundItems, cursor, err = store.Find(context.Background(), searchQuery, "", cursor.Previous, 2, true, "name", &englishCollation, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(foundItems))
+	require.True(t, cursor.HasNext)
+	require.False(t, cursor.HasPrevious)
+	require.Equal(t, item1.ID, foundItems[0].ID)
+	require.Equal(t, item2.ID, foundItems[1].ID)
+	require.Equal(t, item1.Inline.Sample, foundItems[0].Inline.Sample)
+	require.Equal(t, item2.Inline.Sample, foundItems[1].Inline.Sample)
 
 	// Cleanup
 	err = store.RemoveAll(context.Background())
