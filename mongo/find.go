@@ -492,26 +492,8 @@ func validate(results interface{}, paginatedFields []string) error {
 				break
 			}
 
-			if len(tagParts) > 1 && strings.ToLower(strings.TrimSpace(tagParts[1])) == "inline" {
-				if field.Type.Kind() == reflect.Struct {
-					// Iterate over fields of the embedded struct
-					for j := 0; j < field.Type.NumField(); j++ {
-						inlineField := field.Type.Field(j)
-						inlineTag := inlineField.Tag.Get("bson")
-						inlineTagParts := strings.Split(inlineTag, ",")
-						inlineFieldName := strings.TrimSpace(inlineTagParts[0])
-
-						// Check if the embedded struct contains the paginated field
-						if inlineFieldName == paginatedField {
-							paginatedFieldFound = true
-							break
-						}
-					}
-				}
-			}
-
-			// If we've found the paginated field, break out of the loop
-			if paginatedFieldFound {
+			if len(tagParts) > 1 && strings.ToLower(strings.TrimSpace(tagParts[1])) == "inline" && validateInlineFields(field, paginatedField) {
+				paginatedFieldFound = true
 				break
 			}
 		}
@@ -524,4 +506,23 @@ func validate(results interface{}, paginatedFields []string) error {
 
 	// If all paginated fields are validated successfully, return nil
 	return nil
+}
+
+
+func validateInlineFields(field reflect.StructField ,  paginatedField string) bool {
+	if field.Type.Kind() == reflect.Struct {
+		// Iterate over fields of the embedded struct
+		for j := 0; j < field.Type.NumField(); j++ {
+			inlineField := field.Type.Field(j)
+			inlineTag := inlineField.Tag.Get("bson")
+			inlineTagParts := strings.Split(inlineTag, ",")
+			inlineFieldName := strings.TrimSpace(inlineTagParts[0])
+
+			// Check if the embedded struct contains the paginated field
+			if inlineFieldName == paginatedField {
+				return true
+			}
+		}
+	}
+	return false
 }
