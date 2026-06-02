@@ -11,10 +11,9 @@ import (
 
 	mongocursorpagination "github.com/qlik-oss/mongocursorpagination/mongo"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func newMongoStore(t *testing.T) MongoStore {
@@ -27,9 +26,7 @@ func newMongoCollection(t *testing.T) *mongoCollectionWrapper {
 	mongoAddr := os.Getenv("MONGO_URI")
 	require.NotEmpty(t, mongoAddr, "MONGO_URI is required")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoAddr))
+	client, err := mongo.Connect(options.Client().ApplyURI(mongoAddr))
 	require.NoError(t, err, "error connecting to mongo")
 	col := mongoCollectionWrapper{
 		collection: client.Database("test_db").Collection("items"),
@@ -40,7 +37,7 @@ func newMongoCollection(t *testing.T) *mongoCollectionWrapper {
 func createMongoItem(t *testing.T, mongoStore MongoStore, name string, data string) *MongoItem {
 	t.Helper()
 	item := &MongoItem{
-		ID:        primitive.NewObjectID(),
+		ID:        bson.NewObjectID(),
 		Name:      name,
 		Data:      data,
 		CreatedAt: time.Now(),
@@ -53,7 +50,7 @@ func createMongoItem(t *testing.T, mongoStore MongoStore, name string, data stri
 func createItemWithSampleInline(t *testing.T, mongoStore MongoStore, name string, data string, sample string) *MongoItem {
 	t.Helper()
 	item := &MongoItem{
-		ID:        primitive.NewObjectID(),
+		ID:        bson.NewObjectID(),
 		Name:      name,
 		Data:      data,
 		CreatedAt: time.Now(),
@@ -66,7 +63,7 @@ func createItemWithSampleInline(t *testing.T, mongoStore MongoStore, name string
 
 func TestMongoFindManyPagination(t *testing.T) {
 	store := newMongoStore(t)
-	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
+	searchQuery := bson.M{"name": bson.Regex{Pattern: "test item.*", Options: "i"}}
 	englishCollation := options.Collation{Locale: "en", Strength: 3}
 
 	// Get empty array when no items created
@@ -115,7 +112,7 @@ func TestMongoFindManyPagination(t *testing.T) {
 
 func TestMongoFindManyPaginationWithInlineFeature(t *testing.T) {
 	store := newMongoStore(t)
-	searchQuery := bson.M{"sample": primitive.Regex{Pattern: "test.*", Options: "i"}}
+	searchQuery := bson.M{"sample": bson.Regex{Pattern: "test.*", Options: "i"}}
 	englishCollation := options.Collation{Locale: "en", Strength: 3}
 
 	// Get empty array when no items created
@@ -171,7 +168,7 @@ func TestMongoFindManyPaginationWithInlineFeature(t *testing.T) {
 func TestPaginationWithoutPaginatedField(t *testing.T) {
 	const itemNamePrefix = "TestPaginationWithoutPaginatedField"
 	store := newMongoStore(t)
-	searchQuery := bson.M{"name": primitive.Regex{Pattern: fmt.Sprintf("%s.*", itemNamePrefix)}}
+	searchQuery := bson.M{"name": bson.Regex{Pattern: fmt.Sprintf("%s.*", itemNamePrefix)}}
 
 	item1 := createMongoItem(t, store, fmt.Sprintf("%s-1", itemNamePrefix), "")
 	item2 := createMongoItem(t, store, fmt.Sprintf("%s-2", itemNamePrefix), "")
@@ -195,7 +192,7 @@ func TestPaginationWithoutPaginatedField(t *testing.T) {
 
 func TestMongoFindCursorError(t *testing.T) {
 	store := newMongoStore(t)
-	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
+	searchQuery := bson.M{"name": bson.Regex{Pattern: "test item.*", Options: "i"}}
 	englishCollation := options.Collation{Locale: "en", Strength: 3}
 	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "bad_cursor_string", "", 4, true, "name", &englishCollation, nil, nil)
 	require.Error(t, err)
@@ -207,7 +204,7 @@ func TestMongoFindCursorError(t *testing.T) {
 
 func TestMongoPaginationBSONRaw(t *testing.T) {
 	store := newMongoStore(t)
-	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
+	searchQuery := bson.M{"name": bson.Regex{Pattern: "test item.*", Options: "i"}}
 	englishCollation := options.Collation{Locale: "en", Strength: 3}
 
 	item1 := createMongoItem(t, store, "test item 1", "")
@@ -231,7 +228,7 @@ func TestMongoPaginationBSONRaw(t *testing.T) {
 func TestMongoBuildPaginatedQueries(t *testing.T) {
 	col := newMongoCollection(t)
 	englishCollation := options.Collation{Locale: "en", Strength: 3}
-	oid1, _ := primitive.ObjectIDFromHex("5addf533e81549de7696cb04")
+	oid1, _ := bson.ObjectIDFromHex("5addf533e81549de7696cb04")
 	query1 := bson.M{
 		"$or": []bson.M{
 			{"name": "foo"},
@@ -281,7 +278,7 @@ func TestMongoBuildPaginatedQueries(t *testing.T) {
 				CountTotal:     false,
 			},
 			expectQueries: []bson.M{query1},
-			expectSort:    bson.D{primitive.E{Key: "name", Value: 1}, primitive.E{Key: "_id", Value: 1}},
+			expectSort:    bson.D{bson.E{Key: "name", Value: 1}, bson.E{Key: "_id", Value: 1}},
 			expectError:   nil,
 		},
 		{
@@ -368,7 +365,7 @@ func encodeCursor(t *testing.T, cursorData bson.D) string {
 
 func TestMongoFindMultiplePaginatedFields(t *testing.T) {
 	store := newMongoStore(t)
-	searchQuery := bson.M{"name": primitive.Regex{Pattern: "test item.*", Options: "i"}}
+	searchQuery := bson.M{"name": bson.Regex{Pattern: "test item.*", Options: "i"}}
 	englishCollation := options.Collation{Locale: "en", Strength: 3}
 
 	foundItems, cursor, err := store.Find(context.Background(), searchQuery, "", "", 4, true, "name", &englishCollation, nil, nil)

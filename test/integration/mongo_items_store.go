@@ -5,19 +5,19 @@ import (
 	"time"
 
 	mongocursorpagination "github.com/qlik-oss/mongocursorpagination/mongo"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type (
 	MongoItem struct {
-		ID        primitive.ObjectID `bson:"_id"`
-		Name      string             `bson:"name"`
-		Data      string             `bson:"data"`
-		CreatedAt time.Time          `bson:"createdAt"`
-		Inline    InlineItem         `bson:",inline"`
+		ID        bson.ObjectID `bson:"_id"`
+		Name      string        `bson:"name"`
+		Data      string        `bson:"data"`
+		CreatedAt time.Time     `bson:"createdAt"`
+		Inline    InlineItem    `bson:",inline"`
 	}
 
 	InlineItem struct {
@@ -41,19 +41,19 @@ type (
 	}
 )
 
-func (c *mongoCollectionWrapper) Find(ctx context.Context, filter interface{}, opts ...*options.FindOptions) (mongocursorpagination.MongoCursor, error) {
+func (c *mongoCollectionWrapper) Find(ctx context.Context, filter any, opts ...options.Lister[options.FindOptions]) (mongocursorpagination.MongoCursor, error) {
 	return c.collection.Find(ctx, filter, opts...)
 }
 
-func (c *mongoCollectionWrapper) InsertOne(ctx context.Context, document interface{}, opts ...*options.InsertOneOptions) (*mongo.InsertOneResult, error) {
+func (c *mongoCollectionWrapper) InsertOne(ctx context.Context, document any, opts ...options.Lister[options.InsertOneOptions]) (*mongo.InsertOneResult, error) {
 	return c.collection.InsertOne(ctx, document, opts...)
 }
 
-func (c *mongoCollectionWrapper) CountDocuments(ctx context.Context, filter interface{}, opts ...*options.CountOptions) (int64, error) {
+func (c *mongoCollectionWrapper) CountDocuments(ctx context.Context, filter any, opts ...options.Lister[options.CountOptions]) (int64, error) {
 	return c.collection.CountDocuments(ctx, filter, opts...)
 }
 
-func (c *mongoCollectionWrapper) DeleteMany(ctx context.Context, filter interface{}, opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
+func (c *mongoCollectionWrapper) DeleteMany(ctx context.Context, filter any, opts ...options.Lister[options.DeleteManyOptions]) (*mongo.DeleteResult, error) {
 	return c.collection.DeleteMany(ctx, filter, opts...)
 }
 
@@ -72,7 +72,7 @@ func (m *mongoStore) Create(ctx context.Context, c *MongoItem) (*MongoItem, erro
 		return nil, err
 	}
 
-	c.ID = result.InsertedID.(primitive.ObjectID)
+	c.ID = result.InsertedID.(bson.ObjectID)
 	return c, nil
 }
 
