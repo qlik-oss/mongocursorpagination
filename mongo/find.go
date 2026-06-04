@@ -12,9 +12,9 @@ import (
 	"time"
 
 	mcpbson "github.com/qlik-oss/mongocursorpagination/bson"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const (
@@ -33,8 +33,8 @@ type (
 		RemainingBatchLength() int
 	}
 	Collection interface {
-		CountDocuments(context.Context, interface{}, ...*options.CountOptions) (int64, error)
-		Find(context.Context, interface{}, ...*options.FindOptions) (MongoCursor, error)
+		CountDocuments(context.Context, any, ...options.Lister[options.CountOptions]) (int64, error)
+		Find(context.Context, any, ...options.Lister[options.FindOptions]) (MongoCursor, error)
 	}
 	// FindParams holds the parameters to be used in a paginated find mongo query that will return a
 	// Cursor.
@@ -42,7 +42,7 @@ type (
 		Collection Collection
 
 		// The find query to augment with pagination
-		Query primitive.M
+		Query bson.M
 		// The number of results to fetch, should be > 0
 		Limit int64
 		// true, if the results should be sort ascending, false otherwise
@@ -345,12 +345,15 @@ var executeCountQuery = func(ctx context.Context, c Collection, queries []bson.M
 	if collation != nil {
 		options.SetCollation(collation)
 	}
+	timeoutValue := defaultCursorTimeout
 	if timeout > time.Duration(0) {
-		options.SetMaxTime(timeout)
-	} else {
-		options.SetMaxTime(defaultCursorTimeout)
+		timeoutValue = timeout
 	}
-	count, err := c.CountDocuments(ctx, bson.M{"$and": queries}, options)
+
+	countCtx, cancel := context.WithTimeout(ctx, timeoutValue)
+	defer cancel()
+
+	count, err := c.CountDocuments(countCtx, bson.M{"$and": queries}, options)
 	if err != nil {
 		return 0, err
 	}
@@ -371,16 +374,19 @@ func executeCursorQuery(ctx context.Context, c Collection, query []bson.M, sort 
 	if projection != nil {
 		options.SetProjection(projection)
 	}
+	timeoutValue := defaultCursorTimeout
 	if timeout > time.Duration(0) {
-		options.SetMaxTime(timeout)
-	} else {
-		options.SetMaxTime(defaultCursorTimeout)
+		timeoutValue = timeout
 	}
-	cursor, err := c.Find(ctx, bson.M{"$and": query}, options)
+
+	findCtx, cancel := context.WithTimeout(ctx, timeoutValue)
+	defer cancel()
+
+	cursor, err := c.Find(findCtx, bson.M{"$and": query}, options)
 	if err != nil {
 		return err
 	}
-	err = cursor.All(ctx, results)
+	err = cursor.All(findCtx, results)
 
 	if err != nil {
 		return err
@@ -504,8 +510,7 @@ func validate(results interface{}, paginatedFields []string) error {
 	return nil
 }
 
-
-func validateInlineFields(field reflect.StructField ,  paginatedField string) bool {
+func validateInlineFields(field reflect.StructField, paginatedField string) bool {
 	if field.Type.Kind() == reflect.Struct {
 		// Iterate over fields of the embedded struct
 		for j := 0; j < field.Type.NumField(); j++ {

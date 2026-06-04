@@ -5,22 +5,21 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type (
 	Item struct {
-		ID        primitive.ObjectID `bson:"_id"`
-		Name      string             `bson:"name"`
-		Data      string             `bson:"data,omitempty"`
-		CreatedAt time.Time          `bson:"createdAt"`
+		ID        bson.ObjectID `bson:"_id"`
+		Name      string        `bson:"name"`
+		Data      string        `bson:"data,omitempty"`
+		CreatedAt time.Time     `bson:"createdAt"`
 	}
 
 	ItemWithInline struct {
-		ID      primitive.ObjectID `bson:"_id"`
-		Example string             `bson:"example,omitempty"`
-		Item    Item               `bson:",inline"`
+		ID      bson.ObjectID `bson:"_id"`
+		Example string        `bson:"example,omitempty"`
+		Item    Item          `bson:",inline"`
 	}
 )
 
