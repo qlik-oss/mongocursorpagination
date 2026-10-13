@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ory/dockertest"
-	"github.com/ory/dockertest/docker"
+	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
 )
 
 var (
@@ -94,7 +94,7 @@ func NewMongoService(withinDocker bool) *DockerService {
 	return &DockerService{
 		DockerHostname: dockerHostname,
 		Image:          "mongo",
-		Version:        "4.2",
+		Version:        "4.4",
 		PublishedPort:  "27017",
 		ContainerPort:  "27017",
 		Env:            []string{},

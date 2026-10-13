@@ -279,7 +279,7 @@ func TestFind(t *testing.T) {
 				require.NotNil(t, tc.results)
 				// Handle different slice types ([]item and []*item)
 				v := reflect.ValueOf(tc.results)
-				if v.Kind() == reflect.Ptr {
+				if v.Kind() == reflect.Pointer {
 					v = reflect.Indirect(v)
 				}
 				length := v.Len()

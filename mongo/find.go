@@ -400,7 +400,7 @@ func generateCursor(result interface{}, paginatedFields []string) (string, error
 	}
 	// Handle pointer values and reduce number of times reflection is done on the same type.
 	val := reflect.ValueOf(result)
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		_ = reflect.Indirect(val)
 	}
 
@@ -454,7 +454,7 @@ func validate(results interface{}, paginatedFields []string) error {
 
 	// Check if results is a pointer
 	val := reflect.TypeOf(results)
-	if val.Kind() != reflect.Ptr {
+	if val.Kind() != reflect.Pointer {
 		return NewErrInvalidResults("expected results to be a slice pointer")
 	}
 
@@ -475,7 +475,7 @@ func validate(results interface{}, paginatedFields []string) error {
 	}
 
 	// If the slice contains pointers to structs, dereference to get the struct type
-	if elem.Kind() == reflect.Ptr {
+	if elem.Kind() == reflect.Pointer {
 		elem = elem.Elem()
 	}
 
