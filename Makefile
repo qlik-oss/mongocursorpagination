@@ -15,11 +15,11 @@ mod-update:
 	@go get -u ./test/integration
 	@$(MAKE) mod
 
-LINT_VER := 1.61.0
+LINT_VER := 2.14.0
 LINT_NAME := "golangci-lint_$(LINT_VER)"
 
 lint:
-	if [ ! -e ./bin/$(LINT_NAME) ]; then (curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v$(LINT_VER)) && mv ./bin/golangci-lint ./bin/$(LINT_NAME); fi
+	if [ ! -e ./bin/$(LINT_NAME) ]; then GOBIN=$(CURDIR)/bin go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v$(LINT_VER) && mv ./bin/golangci-lint ./bin/$(LINT_NAME); fi
 	./bin/$(LINT_NAME) run --timeout 5m
 
 # Build the Docker test image
