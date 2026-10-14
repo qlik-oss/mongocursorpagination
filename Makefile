@@ -1,6 +1,3 @@
-REPO_NAME := mongocursorpagination
-DOCKER_TEST_IMAGE := $(REPO_NAME)-test
-VERSION ?= latest
 ARGS ?= ""
 
 # Rebuild dependencies
@@ -22,10 +19,6 @@ lint:
 	if [ ! -e ./bin/$(LINT_NAME) ]; then GOBIN=$(CURDIR)/bin go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v$(LINT_VER) && mv ./bin/golangci-lint ./bin/$(LINT_NAME); fi
 	./bin/$(LINT_NAME) run --timeout 5m
 
-# Build the Docker test image
-build-test-docker:
-	./scripts/build-docker.sh $(DOCKER_TEST_IMAGE) $(VERSION) Dockerfile.test
-
 # Run unit tests
 test-unit:
 	./scripts/test-unit.sh
@@ -44,6 +37,5 @@ test-integration-code-climate:
 
 .PHONY: mod
 .PHONY: lint
-.PHONY: build-test-docker
 .PHONY: test-unit test-integration-code-climate
 .PHONY: test-integration test-unit-code-climate
