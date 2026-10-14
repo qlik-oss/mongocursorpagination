@@ -1,4 +1,0 @@
-FROM golang:1.23-alpine
-WORKDIR /go/src/github.com/qlik-oss/mongocursorpagination/
-RUN apk add --no-cache curl build-base
-COPY . /go/src/github.com/qlik-oss/mongocursorpagination/
