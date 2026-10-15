@@ -32,7 +32,7 @@ Releases are published as git tags; see [Releases](https://github.com/qlik-oss/m
 `Find` takes a `FindParams` describing the query, the page size (`Limit`), the field(s) to paginate on and, optionally, a `Next` or `Previous` cursor obtained from a previous call. It decodes the results into the provided slice and returns a `Cursor`:
 
 ```go
-Cursor struct {
+type Cursor struct {
     Previous    string // cursor to pass as FindParams.Previous to get the previous page ("" if none)
     Next        string // cursor to pass as FindParams.Next to get the next page ("" if none)
     HasPrevious bool
@@ -169,6 +169,8 @@ func (s *store) Find(query bson.M, next, previous string, limit int) ([]Item, mo
 ```
 
 ### Paging through results
+
+The snippets below call the mongo-go-driver `Find` method from above. With mgo, drop the `ctx` argument, as the mgo `Find` doesn't take one.
 
 Assuming there are 4 items in the collection that have the name "test item n", get the first page of 2 results sorted by name:
 ```go
